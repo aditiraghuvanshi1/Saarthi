@@ -1,0 +1,1296 @@
+/* Sakhi (Cycle & Mind, Mother Watch) - original code from the earlier Sakhi app, unchanged except:
+   inline handlers became data-on* attributes (run by bridge.js), and start-up is sakhiInit(). */
+    // =========================================================================
+    // STATE MANAGEMENT & DICTIONARIES
+    // =========================================================================
+    let currentLang = 'en'; // 'en', 'hi', or 'kn'
+    let currentStage = 'cycle'; 
+    let activePatientId = 'default';
+    let hotFlashCount = 0;
+    let cycleChartInstance = null;
+    let isListening = false;
+    let screeningStatus = { mammogram: false, pap: false, dexa: false };
+
+
+    // MULTI-PATIENT IN-MEMORY / STORAGE MAP FOR MOTHER WATCH
+    let patientProfiles = {
+      'default': { name: 'Self Profile', edd: '', sys: '', dia: '', weight: '', headache: false, vision: false, swelling: false, movement: false }
+    };
+
+
+    // GROUNDED KNOWLEDGE BASE WITH ENGLISH, HINDI, AND KANNADA
+    const kbData = [
+      {
+        keywords: ['stress', 'delay', 'late', 'missed', 'period', 'irregular', 'तनाव', 'विलंब', 'ಆತಂಕ', 'ತಡ'],
+        answer_en: "Stress triggers cortisol, which can disrupt the hypothalamic-pituitary-ovarian axis and delay ovulation. A missed period occasionally due to high stress is common.",
+        answer_hi: "तनाव से कोर्टिसोल हार्मोन बढ़ता है, जो ओव्यूलेशन (अंडे के बनने) में देरी कर सकता है। अत्यधिक तनाव के कारण कभी-कभार पीरियड में देरी होना एक सामान्य बात है।",
+        answer_kn: "ಒತ್ತಡವು ಕಾರ್ಟಿಸಾಲ್ ಹಾರ್ಮೋನ್ ಹೆಚ್ಚಿಸುತ್ತದೆ, ಇದು ಅಂಡೋತ್ಪತ್ತಿಯನ್ನು ತಡಗೊಳಿಸಬಹುದು. ತೀವ್ರ ಒತ್ತಡದಿಂದ ಅಪರೂಪಕ್ಕೆ ಮುಟ್ಟು ತಡವಾಗುವುದು ಸಾಮಾನ್ಯ.",
+        citation: "WHO Reproductive Health Guidelines, Section 3.2 & ICMR Guidelines"
+      },
+      {
+        keywords: ['preeclampsia', 'bp', 'pressure', 'headache', 'swelling', 'pregnant', 'गर्भावस्था', 'बीपी', 'ರಕ್ತದೊತ್ತಡ'],
+        answer_en: "Preeclampsia is marked by high blood pressure (≥140/90 mmHg) after 20 weeks of pregnancy. Warning signs include severe headaches, blurry vision, and facial swelling.",
+        answer_hi: "प्री-एक्लेमप्सिया गर्भावस्था के 20 सप्ताह बाद उच्च रक्तचाप (≥140/90 mmHg) की स्थिति है। सिरदर्द, धुंधला दिखना और चेहरे पर सूजन इसके मुख्य लक्षण हैं।",
+        answer_kn: "ಪ್ರಿ-ಎಕ್ಲಾಂಪ್ಸಿಯಾ ಗರ್ಭಧಾರಣೆಯ 20 ವಾರಗಳ ನಂತರ ಹೆಚ್ಚಿನ ರಕ್ತದೊತ್ತಡ (≥140/90 mmHg) ಉಂಟುಮಾಡುತ್ತದೆ. ತೀವ್ರ ತಲೆನೋವು ಮತ್ತು ಮುಖದ ಊತ ಇದರ ಮುಖ್ಯ ಲಕ್ಷಣಗಳು.",
+        citation: "ACOG Practice Bulletin No. 222 (Gestational Hypertension & Preeclampsia)"
+      },
+      {
+        keywords: ['hot flash', 'sweat', 'night', 'menopause', 'perimenopause', 'गर्मी', 'ಮಿನೋಪಾಸ್'],
+        answer_en: "Hot flashes occur as declining estrogen affects the brain's thermostat (hypothalamus). Layered clothing, avoiding caffeine/spicy foods, and cooling fans help manage symptoms.",
+        answer_hi: "एस्ट्रोजन हार्मोन का स्तर कम होने से हॉट फ्लैशेज (अचानक गर्मी और पसीना आना) होते हैं। सूती कपड़े पहनना, मसालेदार भोजन से बचना और ठंडा पानी पीना इसमें मदद करता है।",
+        answer_kn: "ಈಸ್ಟ್ರೊಜೆನ್ ಮಟ್ಟ ಕಡಿಮೆಯಾಗುವುದರಿಂದ ದಿಢೀರ್ ಉಷ್ಣತೆ ಹಾಗೂ ಬೆವರು ಉಂಟಾಗುತ್ತದೆ. ತೆಳುವಾದ ಹತ್ತಿ ಬಟ್ಟೆ ಧರಿಸುವುದು ಮತ್ತು ಖಾರ ಕಡಿಮೆ ತಿನ್ನುವುದು ಉಪಯುಕ್ತ.",
+        citation: "IMS (International Menopause Society) Guidelines 2023"
+      },
+      {
+        keywords: ['cramp', 'pain', 'period pain', 'dysmenorrhea', 'दर्द', 'ನೋವು'],
+        answer_en: "Period cramps are caused by uterine contractions triggered by prostaglandins. Warm heat pads, gentle walking, and hydration provide evidence-based relief.",
+        answer_hi: "मासिक धर्म में ऐंठन (पीरियड दर्द) प्रोस्टाग्लैंडिन्स के कारण होती है। गर्म पानी की सिकाई और हल्का व्यायाम राहत दिलाता है।",
+        answer_kn: "ಮುಟ್ಟಿನ ನೋವು ಗರ್ಭಾಶಯದ ಸಂಕೋಚನದಿಂದ ಉಂಟಾಗುತ್ತದೆ. ಬಿಸಿ ನೀರಿನ ಶಾಖ ಮತ್ತು ಸಾಧಾರಣ ನಡಿಗೆಯಿಂದ ನೋವು ಕಡಿಮೆಯಾಗುತ್ತದೆ.",
+        citation: "ICMR Adolescent & Women's Health Protocols"
+      }
+    ];
+
+
+    // EXPANDED MYTH VS FACT CARDS (8 CARDS)
+    const mythCards = [
+      {
+        myth_en: "Myth: You shouldn't wash your hair or bathe during your period.",
+        fact_en: "Fact: Warm baths actually relax uterine muscles and improve hygiene during menstruation.",
+        myth_hi: "भ्रम: पीरियड के दौरान बाल नहीं धोने चाहिए या नहाना नहीं चाहिए।",
+        fact_hi: "तथ्य: हल्के गर्म पानी से नहाने से मांसपेशियों को आराम मिलता है और स्वच्छता बनी रहती है।",
+        myth_kn: "ಮಿಥ್ಯಾಕಲ್ಪನೆ: ಮುಟ್ಟಿನ ಸಮಯದಲ್ಲಿ ಸ್ನಾನ ಮಾಡಬಾರದು ಅಥವಾ ತಲೆ ತೊಳೆಯಬಾರದು.",
+        fact_kn: "ಸತ್ಯ: ಉಗುರುಬೆಚ್ಚಗಿನ ನೀರಿನ ಸ್ನಾನವು ಮುಟ್ಟಿನ ನೋವನ್ನು ಉಪಶಮನಗೊಳಿಸುತ್ತದೆ."
+      },
+      {
+        myth_en: "Myth: Irregular periods in your 40s always mean pregnancy.",
+        fact_en: "Fact: Fluctuating cycle length in your 40s is often the first sign of perimenopause.",
+        myth_hi: "भ्रम: 40 की उम्र में पीरियड अनियमित होने का मतलब हमेशा प्रेग्नेंसी है।",
+        fact_hi: "तथ्य: 40 के दशक में हार्मोन बदलाव के कारण पेरिमैनोपॉज की शुरुआत होती है।",
+        myth_kn: "ಮಿಥ್ಯಾಕಲ್ಪನೆ: 40 ರ ಹರೆಯದಲ್ಲಿ ಮುಟ್ಟು ಅನಿಯಮಿತವಾದರೆ ಅದು ಗರ್ಭಧಾರಣೆ ಎನ್ನಲಾಗುತ್ತದೆ.",
+        fact_kn: "ಸತ್ಯ: 40 ರ ನಂತರ ಮುಟ್ಟಿನ ವ್ಯತ್ಯಾಸವು ಪೆರಿಮೆನೋಪಾಸ್‌ನ ಸಹಜ ಲಕ್ಷಣವಾಗಿದೆ."
+      },
+      {
+        myth_en: "Myth: Pickles will spoil if touched by a menstruating woman.",
+        fact_en: "Fact: Menstruation is a natural bodily process. Microbes, not touch, cause food spoilage.",
+        myth_hi: "भ्रम: पीरियड के दौरान आचार छूने से खराब हो जाता है।",
+        fact_hi: "तथ्य: मासिक धर्म एक प्राकृतिक शारीरिक प्रक्रिया है। बैक्टीरिया आचार खराब करते हैं, स्पर्श नहीं।",
+        myth_kn: "ಮಿಥ್ಯಾಕಲ್ಪನೆ: ಮುಟ್ಟಾದ ಮಹಿಳೆ ಉಪ್ಪಿನಕಾಯಿ ಮುಟ್ಟಿದರೆ ಹಾಳಾಗುತ್ತದೆ.",
+        fact_kn: "ಸತ್ಯ: ಇದು ವೈಜ್ಞಾನಿಕವಲ್ಲ. ಉಪ್ಪಿನಕಾಯಿ ಹಾಳಾಗಲು ಬ್ಯಾಕ್ಟೀರಿಯಾಗಳು ಕಾರಣವೇ ಹೊರತು ಮುಟ್ಟಲ್ಲ."
+      },
+      {
+        myth_en: "Myth: Exercising during your period damages your reproductive organs.",
+        fact_en: "Fact: Light to moderate exercise releases endorphins which reduce menstrual cramps.",
+        myth_hi: "भ्रम: पीरियड में एक्सरसाइज करने से नुकसान होता है।",
+        fact_hi: "तथ्य: हल्का व्यायाम और वॉक करने से एंडोर्फिन निकलता है जो दर्द कम करता है।",
+        myth_kn: "ಮಿಥ್ಯಾಕಲ್ಪನೆ: ಮುಟ್ಟಿನ ಸಮಯದಲ್ಲಿ ವ್ಯಾಯಾಮ ಮಾಡುವುದು ಅಪಾಯಕಾರಿ.",
+        fact_kn: "ಸತ್ಯ: ಹಗುರವಾದ ವ್ಯಾಯಾಮ ಮತ್ತು ನಡಿಗೆಯು ನೋವನ್ನು ಶಮನಗೊಳಿಸಲು ನೆರವಾಗುತ್ತದೆ."
+      },
+      {
+        myth_en: "Myth: Eating papaya or pineapple during pregnancy causes miscarriage.",
+        fact_en: "Fact: Ripe papaya and pineapple in normal amounts are safe and nutrient-rich in pregnancy.",
+        myth_hi: "भ्रम: गर्भावस्था में पपीता या अनानास खाने से गर्भपात होता है।",
+        fact_hi: "तथ्य: पका हुआ पपीता और अनानास सीमित मात्रा में सुरक्षित और पोषक तत्वों से भरपूर हैं।",
+        myth_kn: "ಮಿಥ್ಯಾಕಲ್ಪನೆ: ಗರ್ಭಿಣಿಯರು ಪಪ್ಪಾಯಿ ತಿಂದರೆ ಗರ್ಭಪಾತವಾಗುತ್ತದೆ.",
+        fact_kn: "ಸತ್ಯ: ಪಕ್ವವಾದ ಪಪ್ಪಾಯಿ ಹಣ್ಣನ್ನು ಮಿತವಾಗಿ ಸೇವಿಸುವುದು ಗರ್ಭಿಣಿಯರಿಗೆ ಸುರಕ್ಷಿತ."
+      },
+      {
+        myth_en: "Myth: Menopause happens suddenly in one single day.",
+        fact_en: "Fact: Perimenopause is a transition lasting 4 to 8 years before full menopause.",
+        myth_hi: "भ्रम: मेनोपॉज अचानक एक दिन में हो जाता है।",
+        fact_hi: "तथ्य: पेरिमैनोपॉज एक प्रक्रिया है जो 4 से 8 साल तक धीरे-धीरे चलती है।",
+        myth_kn: "ಮಿಥ್ಯಾಕಲ್ಪನೆ: ಮೆನೋಪಾಸ್ ಒಂದೇ ದಿನದಲ್ಲಿ ದಿಢೀರನೆ ಸಂಭವಿಸುತ್ತದೆ.",
+        fact_kn: "ಸತ್ಯ: ಮೆನೋಪಾಸ್ ಎಂಬುದು 4 ರಿಂದ 8 ವರ್ಷಗಳ ದೀರ್ಘಾವಧಿಯ ಬದಲಾವಣೆಯ ಹಂತ."
+      },
+      {
+        myth_en: "Myth: You cannot get pregnant while breastfeeding.",
+        fact_en: "Fact: Ovulation can return before your first postpartum period. Contraception is advised.",
+        myth_hi: "भ्रम: स्तनपान कराने के दौरान प्रेग्नेंसी नहीं हो सकती।",
+        fact_hi: "तथ्य: पहला पीरियड आने से पहले भी ओव्यूलेशन हो सकता है। सुरक्षा का प्रयोग आवश्यक है।",
+        myth_kn: "ಮಿಥ್ಯಾಕಲ್ಪನೆ: ಹಾಲುಣಿಸುವ ಸಮಯದಲ್ಲಿ ಗರ್ಭಧಾರಣೆ ಸಾಧ್ಯವಿಲ್ಲ.",
+        fact_kn: "ಸತ್ಯ: ಮುಟ್ಟು ಮರುಪ್ರಾರಂಭವಾಗುವ ಮುನ್ನವೇ ಅಂಡೋತ್ಪತ್ತಿಯಾಗಬಹುದು. ಮುನ್ನೆಚ್ಚರಿಕೆ ಅಗತ್ಯ."
+      },
+      {
+        myth_en: "Myth: Severe period pain is normal and must just be endured silently.",
+        fact_en: "Fact: Debilitating pain can be a sign of endometriosis or PCOS and should be evaluated.",
+        myth_hi: "भ्रम: अत्यधिक पीरियड पेन सामान्य है और इसे चुपचाप सहना चाहिए।",
+        fact_hi: "तथ्य: अत्यधिक दर्द एंडोमेट्रियोसिस या PCOS का संकेत हो सकता है, डॉक्टर से जांच कराएं।",
+        myth_kn: "ಮಿಥ್ಯಾಕಲ್ಪನೆ: ತೀವ್ರ ಮುಟ್ಟಿನ ನೋವು ಸಾಮಾನ್ಯ, ಅದನ್ನು ಸಹಿಸಿಕೊಳ್ಳಬೇಕು.",
+        fact_kn: "ಸತ್ಯ: ಅಸಹನೀಯ ನೋವು ಪಿಸಿಒಎಸ್ ಅಥವಾ ಎಂಡೋಮೆಟ್ರಿಯೋಸಿಸ್ ಲಕ್ಷಣವಾಗಿರಬಹುದು. ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ."
+      }
+    ];
+
+
+    // CLINICS DATA
+    const clinicData = [
+      { name: "AIIMS Women's Wellness & ANC Clinic", loc: "delhi", type: "Government Hospital", contact: "011-26588500" },
+      { name: "KEM Maternal & Reproductive Care", loc: "mumbai", type: "Public Healthcare", contact: "022-24107000" },
+      { name: "Vani Vilas Women & Children Hospital", loc: "bengaluru", type: "Specialized Maternity", contact: "080-26705200" },
+      { name: "MP District Matritva Line (Dewas/Bhopal)", loc: "mp", type: "Free Helpline (Tele-MANAS)", contact: "14416" }
+    ];
+
+
+    // I18N DICTIONARY
+    const i18n = {
+      en: {
+        tagline: "One private companion for every stage of a woman’s health",
+        disclaimer: "Medical Disclaimer: Sakhi provides WHO/ICMR grounded health info. It is NOT a substitute for professional doctor diagnosis.",
+        chatTitle: "Ask Sakhi Health Assistant",
+        chatSub: "Private, judgment-free answers with explicit guideline citations.",
+        mythTitle: "Myth vs Fact Flip Cards",
+        clinicTitle: "Verified Clinics & Telehealth (India)",
+        tabAsk: "Ask Sakhi",
+        tabCycle: "Cycle & Mind",
+        tabMother: "Mother Watch",
+        tabChange: "Change Companion",
+        tabSummary: "Doctor Visit Summary"
+      },
+      hi: {
+        tagline: "महिला स्वास्थ्य के हर पड़ाव पर एक सुरक्षित और निजी सखी",
+        disclaimer: "चिकित्सा अस्वीकरण: सखी WHO/ICMR दिशानिर्देशों पर आधारित है। यह डॉक्टर की सलाह का विकल्प नहीं है।",
+        chatTitle: "सखी स्वास्थ्य सहायक से पूछें",
+        chatSub: "गोपनीय, बिना किसी झिझक के उत्तर - स्वास्थ्य स्रोतों के साथ।",
+        mythTitle: "मिथक बनाम तथ्य (कार्ड पलटें)",
+        clinicTitle: "सत्यापित क्लिनिक और टेलीहेल्थ सुविधाएँ",
+        tabAsk: "पूछें सखी",
+        tabCycle: "चक्र और मन",
+        tabMother: "मदर वॉच",
+        tabChange: "परिवर्तन संगिनी",
+        tabSummary: "डॉक्टर विजिट समरी"
+      },
+      kn: {
+        tagline: "ಮಹಿಳೆಯರ ಆರೋಗ್ಯದ ಪ್ರತಿಯೊಂದು ಹಂತಕ್ಕೂ ನಿಮ್ಮ ಖಾಸಗಿ ಸಖಿ",
+        disclaimer: "ವೈದ್ಯಕೀಯ ಹಕ್ಕುತ್ಯಾಗ: ಸಖಿ WHO/ICMR ಮಾರ್ಗಸೂಚಿ ಆಧಾರಿತ ಮಾಹಿತಿ ನೀಡುತ್ತದೆ. ಇದು ವೈದ್ಯರ ಪರ್ಯಾಯವಲ್ಲ.",
+        chatTitle: "ಸಖಿ ಆರೋಗ್ಯ ಸಹಾಯಕಿಯನ್ನು ಕೇಳಿ",
+        chatSub: "ಖಾಸಗಿ, ಗೌಪ್ಯ ಮತ್ತು ನಂಬಿಗಸ್ಥ ಆರೋಗ್ಯ ಉತ್ತರಗಳು.",
+        mythTitle: "ಮಿಥ್ಯಾಕಲ್ಪನೆ ಮತ್ತು ಸತ್ಯ ಸಂಗತಿಗಳು",
+        clinicTitle: "ಖಾತರಿಪಡಿಸಿದ ಆಸ್ಪತ್ರೆ ಮತ್ತು ಟೆಲಿಹೆಲ್ಪ್",
+        tabAsk: "ಸಖಿ ಕೇಳಿ",
+        tabCycle: "ಋತುಚಕ್ರ ಮತ್ತು ಮನಸ್ಸು",
+        tabMother: "ಮದರ್ ವಾಚ್",
+        tabChange: "ಬದಲಾವಣೆ ಸಂಗಾತಿ",
+        tabSummary: "ವೈದ್ಯರ ಭೇಟಿ ವರದಿ"
+      }
+    };
+
+
+    // =========================================================================
+    // INITIALIZATION & SWITCHERS
+    // =========================================================================
+    // Saarthi: started by bridge.js once the page is ready (chat, myth cards and clinics are not on this page)
+    function sakhiInit() {
+      [renderEpds, renderCycleExtras, () => lucide.createIcons(), loadPatientProfilesFromStorage, initCycleChart,
+       setDefaultDates, renderPatientSelectDropdown, loadStoredLogsAndUpdateSummary].forEach(f => { try { f(); } catch (e) { console.warn('Sakhi init:', e); } });
+    }
+
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-tab').forEach(el => {
+        el.classList.remove('bg-rose-600', 'text-white', 'shadow-sm');
+        el.classList.add('text-slate-600', 'hover:bg-slate-200');
+      });
+
+
+      const targetSec = document.getElementById(`sec-${tabId}`);
+      const targetNav = document.getElementById(`nav-${tabId}`);
+      if (targetSec) targetSec.classList.remove('hidden');
+      if (targetNav) {
+        targetNav.classList.add('bg-rose-600', 'text-white', 'shadow-sm');
+        targetNav.classList.remove('text-slate-600', 'hover:bg-slate-200');
+      }
+
+
+      if (tabId === 'doctor-summary') updateDoctorSummaryReport();
+    }
+
+
+    function changeLanguage(langKey) {
+      currentLang = langKey;
+      document.getElementById('txt-tagline').innerText = i18n[currentLang].tagline;
+      document.getElementById('txt-disclaimer-banner').innerText = i18n[currentLang].disclaimer;
+      document.getElementById('txt-chat-title').innerText = i18n[currentLang].chatTitle;
+      document.getElementById('txt-chat-sub').innerText = i18n[currentLang].chatSub;
+      document.getElementById('txt-myth-title').innerText = i18n[currentLang].mythTitle;
+      document.getElementById('txt-clinic-title').innerText = i18n[currentLang].clinicTitle;
+      
+      document.getElementById('tab-ask').innerText = i18n[currentLang].tabAsk;
+      document.getElementById('tab-cycle').innerText = i18n[currentLang].tabCycle;
+      document.getElementById('tab-mother').innerText = i18n[currentLang].tabMother;
+      document.getElementById('tab-change').innerText = i18n[currentLang].tabChange;
+      document.getElementById('tab-summary').innerText = i18n[currentLang].tabSummary;
+
+
+      renderMythCards();
+      renderWelcomeChatMessage();
+    }
+
+
+    function changeLifeStage(stageKey) {
+      currentStage = stageKey;
+      const bTitle = document.getElementById('banner-title');
+      const bDesc = document.getElementById('banner-desc');
+      const stageTag = document.getElementById('banner-stage-tag');
+
+
+      if (stageKey === 'cycle') {
+        stageTag.innerText = "🌸 CYCLE YEARS";
+        bTitle.innerText = "Cycle & Reproductive Health Companion";
+        bDesc.innerText = "Sakhi is tailored to guide your menstrual wellness, emotional balance, and reproductive decisions.";
+        switchTab('cycle-mind');
+      } else if (stageKey === 'pregnancy') {
+        stageTag.innerText = "🤰 PREGNANCY STAGE";
+        bTitle.innerText = "Mother Watch Maternal Monitor";
+        bDesc.innerText = "Tracking blood pressure, preeclampsia indicators, and trimester health milestones.";
+        switchTab('mother-watch');
+      } else if (stageKey === 'menopause') {
+        stageTag.innerText = "🌿 PERIMENOPAUSE / MENOPAUSE";
+        bTitle.innerText = "Change Companion Wellness";
+        bDesc.innerText = "Monitoring hot flashes, sleep patterns, bone health, and hormone transition guidance.";
+        switchTab('change-companion');
+      }
+    }
+
+
+    function openStageModal() { document.getElementById('modal-stage').classList.remove('hidden'); }
+    function closeStageModal() { document.getElementById('modal-stage').classList.add('hidden'); }
+    function selectStageFromModal(stageKey) {
+      document.getElementById('stage-select').value = stageKey;
+      changeLifeStage(stageKey);
+      closeStageModal();
+    }
+
+
+    function toggleEmergencyModal() {
+      document.getElementById('modal-emergency').classList.toggle('hidden');
+    }
+
+
+    function openPMDDModal() { document.getElementById('modal-pmdd').classList.remove('hidden'); }
+    function closePMDDModal() { document.getElementById('modal-pmdd').classList.add('hidden'); }
+
+
+    // =========================================================================
+    // ASK SAKHI ENGINE
+    // =========================================================================
+    function renderWelcomeChatMessage() {
+      const chatBox = document.getElementById('chat-messages');
+      let msg = "Namaste! I am <strong>Sakhi</strong>, your private health companion. I answer questions on periods, pregnancy, contraception, mental health, and menopause using official WHO and ICMR guidelines.";
+      if (currentLang === 'hi') msg = "नमस्ते! मैं <strong>सखी</strong> हूँ, आपकी निजी स्वास्थ्य संगिनी। मैं पीरियड, गर्भावस्था, मानसिक स्वास्थ्य और मेनोपॉज पर WHO और ICMR दिशानिर्देशों से उत्तर देती हूँ।";
+      if (currentLang === 'kn') msg = "ನಮಸ್ಕಾರ! ನಾನು <strong>ಸಖಿ</strong>, ನಿಮ್ಮ ಖಾಸಗಿ ಆರೋಗ್ಯ ಸಂಗಾತಿ. ಋತುಚಕ್ರ, ಗರ್ಭಧಾರಣೆ ಮತ್ತು ಮಹಿಳೆಯರ ಆರೋಗ್ಯಕ್ಕೆ ವೈಜ್ಞಾನಿಕ ಮಾಹಿತಿ ನೀಡುತ್ತೇನೆ.";
+
+
+      chatBox.innerHTML = `
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">स</div>
+          <div class="bg-white border border-rose-100 p-3.5 rounded-2xl max-w-[85%] text-xs text-slate-700 shadow-sm leading-relaxed">
+            ${msg}
+          </div>
+        </div>
+      `;
+    }
+
+
+    function handleChatKeyPress(e) {
+      if (e.key === 'Enter') handleSendMessage();
+    }
+
+
+    function sendQuickPrompt(promptText) {
+      document.getElementById('chat-input').value = promptText;
+      handleSendMessage();
+    }
+
+
+    function handleSendMessage() {
+      const inputEl = document.getElementById('chat-input');
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+
+      const chatBox = document.getElementById('chat-messages');
+      
+      chatBox.innerHTML += `
+        <div class="flex items-start gap-3 justify-end">
+          <div class="bg-rose-600 text-white p-3.5 rounded-2xl max-w-[85%] text-xs shadow-sm leading-relaxed">
+            ${escapeHtml(text)}
+          </div>
+        </div>
+      `;
+
+
+      inputEl.value = '';
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+
+      setTimeout(() => {
+        const botResponse = generateGroundedBotAnswer(text);
+        chatBox.innerHTML += `
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-xs flex-shrink-0">स</div>
+            <div class="bg-white border border-slate-200 p-3.5 rounded-2xl max-w-[85%] text-xs text-slate-800 shadow-sm leading-relaxed space-y-2">
+              <p>${botResponse.answer}</p>
+              <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                <span class="font-bold text-rose-700">Source: ${botResponse.citation}</span>
+                <span>🔒 Private Log</span>
+              </div>
+            </div>
+          </div>
+        `;
+        chatBox.scrollTop = chatBox.scrollHeight;
+      }, 400);
+    }
+
+
+    function generateGroundedBotAnswer(query) {
+      const q = query.toLowerCase();
+      let matched = null;
+
+
+      for (let item of kbData) {
+        if (item.keywords.some(k => q.includes(k))) {
+          matched = item;
+          break;
+        }
+      }
+
+
+      if (matched) {
+        let ans = matched.answer_en;
+        if (currentLang === 'hi') ans = matched.answer_hi;
+        if (currentLang === 'kn') ans = matched.answer_kn;
+        return { answer: ans, citation: matched.citation };
+      }
+
+
+      return {
+        answer: currentLang === 'hi' 
+          ? "क्षमा करें, मुझे इस विशिष्ट स्थिति के बारे में पर्याप्त चिकित्सकीय जानकारी नहीं है। कृपया डॉक्टर से परामर्श लें।" 
+          : (currentLang === 'kn' ? "ಕ್ಷಮಿಸಿ, ಈ ವೈದ್ಯಕೀಯ ಪ್ರಶ್ನೆಗೆ ನಿಖರ ಮಾಹಿತಿ ಲಭ್ಯವಿಲ್ಲ. ದಯವಿಟ್ಟು ವೈದ್ಯರನ್ನು ಸಂಪರ್ಕಿಸಿ." : "I am sorry, I don't know the exact answer to this specific medical query. Please consult a qualified doctor."),
+        citation: "Safety Fallback Rule (WHO Guidance)"
+      };
+    }
+
+
+    function clearChat() { renderWelcomeChatMessage(); }
+
+
+    function toggleVoiceInput() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        alert("Web Speech API is not supported on this browser. Try Chrome or Edge.");
+        return;
+      }
+      
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = currentLang === 'hi' ? 'hi-IN' : (currentLang === 'kn' ? 'kn-IN' : 'en-US');
+
+
+      const voiceBtn = document.getElementById('voice-btn');
+      
+      if (!isListening) {
+        recognition.start();
+        isListening = true;
+        voiceBtn.classList.add('bg-rose-100', 'text-rose-600', 'animate-pulse');
+      }
+
+
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('chat-input').value = transcript;
+        isListening = false;
+        voiceBtn.classList.remove('bg-rose-100', 'text-rose-600', 'animate-pulse');
+        handleSendMessage();
+      };
+
+
+      recognition.onerror = function() {
+        isListening = false;
+        voiceBtn.classList.remove('bg-rose-100', 'text-rose-600', 'animate-pulse');
+      };
+    }
+
+
+    function renderMythCards() {
+      const container = document.getElementById('myth-cards-container');
+      container.innerHTML = mythCards.map((c, idx) => {
+        let mythText = c.myth_en;
+        let factText = c.fact_en;
+        if (currentLang === 'hi') { mythText = c.myth_hi; factText = c.fact_hi; }
+        if (currentLang === 'kn') { mythText = c.myth_kn; factText = c.fact_kn; }
+
+
+        return `
+          <div class="flip-card h-32 cursor-pointer" data-onclick="flipCard(this)">
+            <div class="flip-card-inner relative w-full h-full rounded-2xl shadow-sm border border-purple-100">
+              <div class="flip-card-front absolute inset-0 bg-purple-50 rounded-2xl p-4 flex flex-col justify-between">
+                <span class="text-[10px] font-extrabold text-purple-700 uppercase tracking-wider">MYTH CARD #${idx + 1}</span>
+                <p class="text-xs font-semibold text-purple-950">${mythText}</p>
+                <span class="text-[10px] text-purple-600 font-bold underline text-right">Tap to Reveal Fact ↺</span>
+              </div>
+              <div class="flip-card-back absolute inset-0 bg-teal-600 text-white rounded-2xl p-4 flex flex-col justify-between">
+                <span class="text-[10px] font-extrabold text-teal-200 uppercase tracking-wider">VERIFIED CLINICAL FACT</span>
+                <p class="text-xs font-semibold leading-relaxed">${factText}</p>
+                <span class="text-[10px] text-teal-200 font-bold text-right">Grounded Guidance ✓</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+
+    function renderClinics(filterLoc) {
+      const listEl = document.getElementById('clinic-list');
+      const filtered = filterLoc === 'all' ? clinicData : clinicData.filter(c => c.loc === filterLoc);
+      
+      listEl.innerHTML = filtered.map(c => `
+        <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs flex items-center justify-between">
+          <div>
+            <h4 class="font-bold text-slate-800">${c.name}</h4>
+            <span class="text-[10px] text-teal-700 font-semibold">${c.type}</span>
+          </div>
+          <a href="tel:${c.contact}" class="bg-teal-100 hover:bg-teal-200 text-teal-800 px-2.5 py-1 rounded-lg font-bold text-[11px] flex items-center gap-1">
+            <i data-lucide="phone" class="w-3 h-3"></i> Call
+          </a>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+
+    function filterClinics() {
+      renderClinics(document.getElementById('clinic-city').value);
+    }
+
+
+    // =========================================================================
+    // CYCLE & MIND (REAL 90-DAY RETENTION & DYNAMIC SUMMARY)
+    // =========================================================================
+    function setDefaultDates() {
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem('sakhi_cycle') || 'null'); } catch (e) {}
+      if (saved) {
+        document.getElementById('cycle-last-date').value = saved.val;
+        document.getElementById('cycle-length').value = saved.len;
+        document.getElementById('period-length').value = saved.per;
+      } else {
+        const d = new Date(); d.setDate(d.getDate() - 8);
+        document.getElementById('cycle-last-date').value = todayISO(d);
+      }
+      calculateCyclePhase();
+    }
+
+
+    function calculateCyclePhase() {
+      const val = document.getElementById('cycle-last-date').value;
+      const len = Math.min(60, Math.max(20, parseInt(document.getElementById('cycle-length').value) || 28));
+      const per = Math.min(10, Math.max(2, parseInt(document.getElementById('period-length').value) || 5));
+      const title = document.getElementById('txt-current-phase');
+      const desc = document.getElementById('txt-phase-desc');
+      const extra = document.getElementById('cycle-extra');
+      if (!val) { title.innerText = 'Enter your last period start date'; desc.innerText = ''; extra.innerHTML = ''; return; }
+
+      const DAY = 864e5, [y, m, d] = val.split('-').map(Number), start = new Date(y, m - 1, d);
+      const now = new Date(); now.setHours(0, 0, 0, 0);
+      const diff = Math.round((now - start) / DAY);
+      if (diff < 0) { title.innerText = 'That date is in the future'; desc.innerText = 'Choose the first day of your most recent period.'; extra.innerHTML = ''; return; }
+      try { localStorage.setItem('sakhi_cycle', JSON.stringify({ val, len, per })); } catch (e) {}
+
+      const add = n => new Date(start.getTime() + n * DAY);
+      const fmt = dt => dt.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+      const ov = len - 14;                                   // ovulation day number (luteal phase ~14 days)
+      const b1 = per, b2 = Math.max(per, ov - 2), b3 = Math.max(b2, ov + 1);
+      const late = diff >= len;
+      const day = late ? len : diff + 1;
+      let name, text;
+      if (late) { name = 'Period due'; text = 'Your logged cycle length has passed.'; }
+      else if (day <= b1) { name = 'Menstrual Phase'; text = 'Hormones at baseline. Rest, warm hydration, and gentle movement recommended.'; }
+      else if (day <= b2) { name = 'Follicular Phase'; text = 'Estrogen rising. Energy and focus tend to increase.'; }
+      else if (day <= b3) { name = 'Ovulation Phase'; text = 'Peak estrogen and LH. Highest energy and fertility window.'; }
+      else { name = 'Luteal Phase'; text = 'Progesterone dominant. Mindful stress management advised.'; }
+      title.innerText = late ? name : `${name} (Day ${day})`;
+      desc.innerText = text;
+
+      const toNext = len - diff;
+      const fertile = diff >= ov - 6 && diff <= ov;
+      const seg = [[b1, '#7a3552', 'Period'], [b2 - b1, '#8fa3cf', 'Follicular'], [b3 - b2, '#2f6656', 'Ovulation'], [len - b3, '#b9b08a', 'Luteal']];
+      const bar = seg.map(x => `<div title="${x[2]}" style="width:${x[0] / len * 100}%;background:${x[1]}" class="h-3"></div>`).join('');
+      const pos = Math.min(99, (Math.min(diff + 0.5, len)) / len * 100);
+      let lateMsg = '';
+      if (late && diff < len + 60) {
+        const by = diff - len;
+        lateMsg = `<div class="p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs text-amber-900">Your period is <strong>${by === 0 ? 'due today' : by + ' day' + (by > 1 ? 's' : '') + ' late'}</strong> if it has not started. ${by >= 7 ? 'If you could be pregnant, take a home test. See a doctor if it is more than 7 days late, or if you have gone 3 months without a period.' : 'Cycles vary, so wait a few days before worrying.'} Update the start date above once it begins.</div>`;
+      } else if (late) {
+        lateMsg = `<div class="p-3 rounded-xl bg-slate-100 text-xs text-slate-700">That date is ${diff} days ago. Enter the first day of your latest period for an accurate forecast.</div>`;
+      }
+      const nexts = [1, 2, 3].map(k => `<span class="px-2 py-1 bg-white border border-slate-200 rounded-lg">${fmt(add(len * k))}</span>`).join(' ');
+      extra.innerHTML = `
+        <div class="relative pt-2"><div class="flex rounded overflow-hidden">${bar}</div>
+          ${late ? '' : `<div class="absolute top-0 w-0.5 h-7 bg-slate-900" style="left:${pos}%"></div>`}
+          <div class="flex justify-between text-[10px] text-slate-500 mt-1"><span>Day 1</span><span>Day ${len}</span></div></div>
+        ${lateMsg}
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100"><span class="text-slate-500 block">Next period</span><strong>${fmt(add(len))}</strong><span class="text-slate-500 block">${toNext > 0 ? 'in ' + toNext + ' day' + (toNext > 1 ? 's' : '') : (toNext === 0 ? 'expected today' : Math.abs(toNext) + ' days ago')}</span></div>
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100"><span class="text-slate-500 block">Likely ovulation</span><strong>${fmt(add(ov - 1))}</strong><span class="text-slate-500 block">Day ${ov}</span></div>
+          <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-100 col-span-2"><span class="text-slate-500 block">Fertile window</span><strong>${fmt(add(ov - 6))} to ${fmt(add(ov))}</strong> ${fertile ? '<span class="ml-1 text-teal-700 font-bold">· you are in it now</span>' : ''}</div>
+        </div>
+        <div class="text-xs text-slate-600">Next three periods: ${nexts}</div>
+        <p class="text-[10px] text-slate-400">Estimates assume ovulation about 14 days before your next period. Not reliable as contraception.</p>
+        <div class="p-3 rounded-xl bg-white border border-slate-200 text-xs space-y-2">
+          <div id="pr-banner"></div>
+          <label class="flex items-center gap-2 font-semibold cursor-pointer"><input type="checkbox" id="pr-on" data-onchange="savePeriodReminder()"> Remind me before my period (optional)</label>
+          <div class="flex items-center gap-2 flex-wrap">
+            <select id="pr-days" data-onchange="savePeriodReminder()" class="border border-slate-200 rounded-lg px-2 py-1"><option value="1">1 day before</option><option value="2">2 days before</option><option value="3">3 days before</option><option value="5">5 days before</option><option value="7">7 days before</option></select>
+            <button data-onclick="periodICS()" class="px-3 py-1.5 bg-rose-600 text-white font-bold rounded-lg">Add to calendar</button>
+          </div>
+          <p class="text-[10px] text-slate-400">The reminder shows here whenever you open Sakhi. The calendar file also alerts you when Sakhi is closed.</p>
+        </div>`;
+      restorePeriodReminder();
+    }
+
+
+    function saveDailyCheckIn() {
+      const mood = parseInt(document.getElementById('log-mood').value);
+      const sleep = parseInt(document.getElementById('log-sleep').value);
+      const stress = parseInt(document.getElementById('log-stress').value);
+      const energy = parseInt(document.getElementById('log-energy').value);
+      const pain = parseInt(document.getElementById('log-pain').value);
+
+
+      const newEntry = {
+        date: new Date().toISOString().split('T')[0],
+        timestamp: Date.now(),
+        mood, sleep, stress, energy, pain
+      };
+
+
+      let logs = JSON.parse(localStorage.getItem('sakhi_90day_logs') || '[]');
+      
+      // Filter out older than 90 days
+      const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+      logs = logs.filter(l => l.timestamp >= ninetyDaysAgo);
+      
+      logs.push(newEntry);
+      localStorage.setItem('sakhi_90day_logs', JSON.stringify(logs));
+
+
+      const msg = document.getElementById('checkin-save-msg');
+      msg.classList.remove('hidden');
+      setTimeout(() => msg.classList.add('hidden'), 2500);
+
+
+      loadStoredLogsAndUpdateSummary();
+    }
+
+
+    function loadStoredLogsAndUpdateSummary() {
+      let logs = JSON.parse(localStorage.getItem('sakhi_90day_logs') || '[]');
+      const ninetyDaysAgo = Date.now() - (90 * 24 * 60 * 60 * 1000);
+      logs = logs.filter(l => l.timestamp >= ninetyDaysAgo);
+
+
+      document.getElementById('stat-total-logs').innerText = logs.length;
+
+
+      if (logs.length > 0) {
+        const avgMood = (logs.reduce((acc, c) => acc + c.mood, 0) / logs.length).toFixed(1);
+        const avgSleep = (logs.reduce((acc, c) => acc + c.sleep, 0) / logs.length).toFixed(1);
+        const severePainDays = logs.filter(l => l.pain >= 5).length;
+
+
+        document.getElementById('stat-avg-mood').innerText = `${avgMood} / 5`;
+        document.getElementById('stat-avg-sleep').innerText = `${avgSleep} / 5`;
+        document.getElementById('stat-pain-days').innerText = severePainDays;
+
+
+        updateCycleChartWithRealLogs(logs);
+      } else {
+        document.getElementById('stat-avg-mood').innerText = "--";
+        document.getElementById('stat-avg-sleep').innerText = "--";
+        document.getElementById('stat-pain-days').innerText = "0";
+      }
+    }
+
+
+    function initCycleChart() {
+      const ctx = document.getElementById('cycleChart').getContext('2d');
+      cycleChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['No Logs Saved Yet'],
+          datasets: [
+            { label: 'Mood Score (1-5)', data: [3], borderColor: '#e11d48', backgroundColor: 'rgba(225, 29, 72, 0.1)', tension: 0.3, fill: true },
+            { label: 'Sleep Quality (1-5)', data: [3], borderColor: '#9333ea', backgroundColor: 'transparent', borderDash: [5, 5], tension: 0.3 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: { y: { min: 1, max: 5 } }
+        }
+      });
+    }
+
+
+    function updateCycleChartWithRealLogs(logs) {
+      if (!cycleChartInstance) return;
+      const recent = logs.slice(-10); // show last 10 entries
+      cycleChartInstance.data.labels = recent.map(l => l.date.slice(5));
+      cycleChartInstance.data.datasets[0].data = recent.map(l => l.mood);
+      cycleChartInstance.data.datasets[1].data = recent.map(l => l.sleep);
+      cycleChartInstance.update();
+    }
+
+
+    function loadDemoCycleData() {
+      const demoLogs = [
+        { date: '10-10', timestamp: Date.now()-90000, mood: 2, sleep: 2, stress: 4, energy: 2, pain: 5 },
+        { date: '10-12', timestamp: Date.now()-80000, mood: 3, sleep: 3, stress: 3, energy: 3, pain: 2 },
+        { date: '10-14', timestamp: Date.now()-70000, mood: 4, sleep: 4, stress: 2, energy: 4, pain: 0 },
+        { date: '10-16', timestamp: Date.now()-60000, mood: 5, sleep: 5, stress: 1, energy: 5, pain: 0 },
+        { date: '10-18', timestamp: Date.now()-50000, mood: 4, sleep: 4, stress: 2, energy: 4, pain: 0 },
+        { date: '10-20', timestamp: Date.now()-40000, mood: 3, sleep: 3, stress: 3, energy: 3, pain: 0 },
+        { date: '10-22', timestamp: Date.now()-30000, mood: 2, sleep: 2, stress: 5, energy: 2, pain: 2 }
+      ];
+      localStorage.setItem('sakhi_90day_logs', JSON.stringify(demoLogs));
+      loadStoredLogsAndUpdateSummary();
+    }
+
+
+    const EPDS = [
+      ['I have been able to laugh and see the funny side of things', [['As much as I always could',0],['Not quite so much now',1],['Definitely not so much now',2],['Not at all',3]]],
+      ['I have looked forward to things with enjoyment', [['As much as I ever did',0],['Rather less than I used to',1],['Definitely less than I used to',2],['Hardly at all',3]]],
+      ['I have blamed myself unnecessarily when things went wrong', [['No, never',0],['Not very often',1],['Yes, some of the time',2],['Yes, most of the time',3]]],
+      ['I have felt anxious or worried for no good reason', [['No, not at all',0],['Hardly ever',1],['Yes, sometimes',2],['Yes, very often',3]]],
+      ['I have felt scared or panicky for no very good reason', [['No, not at all',0],['No, not much',1],['Yes, sometimes',2],['Yes, quite a lot',3]]],
+      ['Things have been getting on top of me', [['I have coped as well as ever',0],['Most of the time I have coped quite well',1],['Sometimes I have not coped as well as usual',2],['Most of the time I have not been able to cope',3]]],
+      ['I have been so unhappy that I have had difficulty sleeping', [['No, not at all',0],['Not very often',1],['Yes, sometimes',2],['Yes, most of the time',3]]],
+      ['I have felt sad or miserable', [['No, not at all',0],['Not very often',1],['Yes, quite often',2],['Yes, most of the time',3]]],
+      ['I have been so unhappy that I have been crying', [['No, never',0],['Only occasionally',1],['Yes, quite often',2],['Yes, most of the time',3]]],
+      ['The thought of harming myself has occurred to me', [['Never',0],['Hardly ever',1],['Sometimes',2],['Yes, quite often',3]]]
+    ];
+
+    function renderEpds() {
+      const f = document.getElementById('epds-form');
+      if (!f) return;
+      f.innerHTML = EPDS.map((q, i) => `
+        <fieldset class="border border-slate-100 rounded-lg p-2.5 bg-slate-50/60">
+          <legend class="px-1 font-semibold text-slate-800">${i + 1}. ${q[0]}</legend>
+          ${q[1].map(o => `<label class="flex items-center gap-2 py-0.5 cursor-pointer"><input type="radio" name="epds${i}" value="${o[1]}" class="text-rose-600"><span>${o[0]}</span></label>`).join('')}
+        </fieldset>`).join('');
+      const r = document.getElementById('pp-result'); if (r) r.classList.add('hidden');
+      const nm = document.getElementById('epds-patient');
+      if (nm) nm.innerText = (patientProfiles[activePatientId] || {}).name || 'Self Profile';
+    }
+
+    function checkPostpartumScreening() {
+      let total = 0, missing = [], q10 = 0;
+      EPDS.forEach((q, i) => {
+        const c = document.querySelector(`input[name="epds${i}"]:checked`);
+        if (!c) missing.push(i + 1); else { total += +c.value; if (i === 9) q10 = +c.value; }
+      });
+      const resEl = document.getElementById('pp-result');
+      resEl.classList.remove('hidden');
+      if (missing.length) {
+        resEl.className = "mt-2 p-3 bg-slate-100 text-slate-800 rounded-xl text-xs font-semibold border border-slate-300";
+        resEl.innerText = `Please answer question${missing.length > 1 ? 's' : ''} ${missing.join(', ')} to get your score.`;
+        return;
+      }
+      let cls, msg;
+      if (total >= 13) { cls = "bg-red-50 text-red-900 border-red-300"; msg = `Score ${total}/30. This is in the range where postpartum depression is likely. Please see a doctor or ASHA/ANM worker this week and share this score.`; }
+      else if (total >= 10) { cls = "bg-amber-50 text-amber-900 border-amber-300"; msg = `Score ${total}/30. Possible low mood. Talk to someone you trust and mention it at your next check-up. Repeat this screen in 1 to 2 weeks.`; }
+      else { cls = "bg-emerald-50 text-emerald-900 border-emerald-300"; msg = `Score ${total}/30. Low likelihood of postpartum depression right now. Repeat if your mood changes.`; }
+      if (q10 > 0) { cls = "bg-red-50 text-red-900 border-red-400"; msg += ` You answered that thoughts of harming yourself have occurred. You do not have to carry that alone: call Tele-MANAS 14416 or emergency services 112 today, or tell a person near you right now.`; }
+      resEl.className = `mt-2 p-3 rounded-xl text-xs font-semibold border ${cls}`;
+      resEl.innerText = msg;
+      const p = patientProfiles[activePatientId];
+      if (p) { p.epds = { score: total, q10: q10 > 0, date: todayISO() }; savePatientProfilesToStorage(); }
+    }
+
+
+    // =========================================================================
+    // MOTHER WATCH (DYNAMIC PATIENT PROFILES & ISOLATED DATA)
+    // =========================================================================
+
+    function todayISO(d) { d = d || new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); }
+    function toast(msg) {
+      let t = document.getElementById('toast');
+      if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
+      t.innerText = msg; t.style.display = 'block';
+      clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 2200);
+    }
+    function blankPatient(name) { return { name, edd: '', readings: [], notes: '', epds: null, appts: [], tests: {} }; }
+    function riskLevel(r) {
+      const sys = parseInt(r && r.sys), dia = parseInt(r && r.dia);
+      if (isNaN(sys) || isNaN(dia)) return { k: 'none' };
+      if (sys >= 140 || dia >= 90 || (sys >= 130 && (r.headache || r.vision))) return { k: 'red', t: `Blood pressure ${sys}/${dia} needs urgent review` };
+      if (r.movement) return { k: 'red', t: 'Reduced baby movement needs same-day assessment' };
+      if (r.swelling || r.headache || r.vision || sys >= 130 || dia >= 85) return { k: 'amber', t: 'Borderline vitals or warning symptoms logged' };
+      return { k: 'green', t: 'Logged vitals within normal range' };
+    }
+    function weeksFor(edd) {
+      if (!edd) return null;
+      const w = Math.floor((new Date() - (new Date(edd + 'T00:00') - 280 * 864e5)) / (7 * 864e5));
+      return w;
+    }
+    function openSummaryFor(id) { summaryPatientId = id; switchTab('doctor-summary'); window.scrollTo(0, 0); }
+    let summaryPatientId = null;
+
+    function loadPatientProfilesFromStorage() {
+      try {
+        const saved = JSON.parse(localStorage.getItem('sakhi_patient_profiles') || 'null');
+        if (saved) patientProfiles = saved;
+      } catch (e) {}
+      if (!patientProfiles.default) patientProfiles.default = blankPatient('Self Profile');
+      Object.keys(patientProfiles).forEach(id => {
+        const p = patientProfiles[id];
+        if (!Array.isArray(p.readings)) {                     // migrate older single-entry profiles
+          p.readings = (p.sys && p.dia) ? [{ date: todayISO(), sys: p.sys, dia: p.dia, weight: p.weight, headache: !!p.headache, vision: !!p.vision, swelling: !!p.swelling, movement: !!p.movement }] : [];
+        }
+        if (p.notes === undefined) p.notes = '';
+        if (!Array.isArray(p.appts)) p.appts = [];
+        if (!p.tests) p.tests = {};
+        if (p.epds === undefined) p.epds = null;
+      });
+      const old = localStorage.getItem('sakhi_doctor_notes');
+      if (old && !patientProfiles.default.notes) patientProfiles.default.notes = old;
+    }
+
+    function addNewPatientPrompt() {
+      const name = prompt("Enter New Patient / Profile Name:");
+      if (name && name.trim()) {
+        const newId = `patient_${Date.now()}`;
+        patientProfiles[newId] = blankPatient(name.trim());
+        activePatientId = newId;
+        savePatientProfilesToStorage();
+        renderPatientSelectDropdown();
+        toast(`Created profile for ${name.trim()}`);
+      }
+    }
+
+    function deleteActivePatient() {
+      if (activePatientId === 'default') { toast('The Self Profile cannot be deleted.'); return; }
+      const p = patientProfiles[activePatientId];
+      if (!confirm(`Delete ${p.name} and all of their readings? This cannot be undone.`)) return;
+      delete patientProfiles[activePatientId];
+      if (summaryPatientId === activePatientId) summaryPatientId = null;
+      activePatientId = 'default';
+      savePatientProfilesToStorage();
+      renderPatientSelectDropdown();
+    }
+
+    function switchPatientProfile(id) { activePatientId = id; loadPatientFormData(id); }
+
+    function loadPatientFormData(id) {
+      const p = patientProfiles[id] || blankPatient('Self Profile');
+      const last = p.readings[p.readings.length - 1] || {};
+      document.getElementById('active-profile-badge').innerText = p.name;
+      document.getElementById('mw-name').innerText = p.name;
+      document.getElementById('preg-edd').value = p.edd || '';
+      document.getElementById('vital-sys').value = last.sys || '';
+      document.getElementById('vital-dia').value = last.dia || '';
+      document.getElementById('vital-weight').value = last.weight || '';
+      ['headache', 'vision', 'swelling', 'movement'].forEach(k => document.getElementById('chk-' + k).checked = !!last[k]);
+      document.getElementById('mw-delete').style.display = id === 'default' ? 'none' : '';
+      calculateTrimester();
+      evaluateMotherWatchRisk();
+      renderReadings();
+      renderEpds();
+      renderPregWeek(); renderAppts(); renderTests();
+    }
+
+    function saveAndEvaluateMotherWatch() {
+      const p = patientProfiles[activePatientId];
+      const sys = parseInt(document.getElementById('vital-sys').value), dia = parseInt(document.getElementById('vital-dia').value);
+      if (isNaN(sys) || isNaN(dia) || sys < 60 || sys > 260 || dia < 30 || dia > 160 || dia >= sys) {
+        toast('Enter a realistic systolic and diastolic BP first.'); return;
+      }
+      p.edd = document.getElementById('preg-edd').value;
+      const r = { date: todayISO(), sys, dia, weight: document.getElementById('vital-weight').value,
+        headache: document.getElementById('chk-headache').checked, vision: document.getElementById('chk-vision').checked,
+        swelling: document.getElementById('chk-swelling').checked, movement: document.getElementById('chk-movement').checked };
+      const same = p.readings.findIndex(x => x.date === r.date);   // one reading per day, re-saving updates it
+      if (same >= 0) p.readings[same] = r; else p.readings.push(r);
+      p.readings.sort((a, b) => a.date.localeCompare(b.date));
+      savePatientProfilesToStorage();
+      evaluateMotherWatchRisk();
+      renderReadings();
+      toast(`Saved for ${p.name}`);
+    }
+
+    function deleteReading(i) {
+      const p = patientProfiles[activePatientId];
+      p.readings.splice(i, 1);
+      savePatientProfilesToStorage();
+      loadPatientFormData(activePatientId);
+    }
+
+    function renderReadings() {
+      const p = patientProfiles[activePatientId], el = document.getElementById('mw-history');
+      renderCharts();
+      if (!p.readings.length) { el.innerHTML = '<p class="text-xs text-slate-500">No readings saved for this patient yet. Enter a blood pressure on the left and press Save.</p>'; return; }
+      const pill = { red: 'bg-red-100 text-red-800', amber: 'bg-amber-100 text-amber-800', green: 'bg-emerald-100 text-emerald-800' };
+      const word = { red: 'Urgent', amber: 'Watch', green: 'Normal' };
+      el.innerHTML = `<table class="w-full text-xs text-left"><thead class="text-slate-500"><tr><th class="py-1">Date</th><th>BP</th><th>Weight</th><th>Symptoms</th><th>Status</th><th></th></tr></thead><tbody>` +
+        p.readings.map((r, i) => ({ r, i })).reverse().map(({ r, i }) => {
+          const k = riskLevel(r).k, sy = ['headache', 'vision', 'swelling', 'movement'].filter(x => r[x]).map(x => ({ headache: 'headache', vision: 'vision changes', swelling: 'swelling', movement: 'low movement' }[x])).join(', ');
+          return `<tr class="border-t border-slate-100"><td class="py-1.5">${new Date(r.date + 'T00:00').toLocaleDateString()}</td><td class="font-semibold">${r.sys}/${r.dia}</td><td>${r.weight ? r.weight + ' kg' : '–'}</td><td>${sy || '–'}</td><td><span class="px-2 py-0.5 rounded-full font-bold ${pill[k]}">${word[k]}</span></td><td><button data-onclick="deleteReading(${i})" class="text-slate-400 hover:text-red-600" aria-label="Delete reading">&times;</button></td></tr>`;
+        }).join('') + '</tbody></table>';
+    }
+
+    function calculateTrimester() {
+      const val = document.getElementById('preg-edd').value, badge = document.getElementById('trimester-badge');
+      if (!val) { badge.innerText = "Trimester: Select EDD date above"; return; }
+      const w = weeksFor(val);
+      if (w < 0) badge.innerText = "Due date is more than 40 weeks away. Check the date.";
+      else if (w > 44) badge.innerText = "Due date has passed by more than 4 weeks. Check the date.";
+      else badge.innerText = `Trimester ${w <= 12 ? 1 : w <= 27 ? 2 : 3} (${w} Weeks Pregnant)`;
+    }
+
+    function evaluateMotherWatchRisk() {
+      const r = { sys: document.getElementById('vital-sys').value, dia: document.getElementById('vital-dia').value,
+        headache: document.getElementById('chk-headache').checked, vision: document.getElementById('chk-vision').checked,
+        swelling: document.getElementById('chk-swelling').checked, movement: document.getElementById('chk-movement').checked };
+      const lv = riskLevel(r);
+      const sets = {
+        none: ['slate', '–', 'NO READING YET', 'Enter blood pressure to see status', 'Add a blood pressure reading and symptoms, then press Save. Status updates from the numbers you log.'],
+        green: ['emerald', '✓', 'GREEN STATUS - NORMAL', 'All Logged Vitals Are Within Normal Range', 'Continue routine antenatal care check-ups and daily iron-folic acid tablets as advised by your doctor.'],
+        amber: ['amber', '⚠️', 'AMBER STATUS - CAUTION', lv.t || '', 'Schedule an ANC check-up within 24 to 48 hours and re-check blood pressure after resting.'],
+        red: ['red', '🚨', 'RED FLAG STATUS - IMMEDIATE ESCALATION', lv.t || '', 'Visit the nearest hospital or obstetrician now. Do not delay.']
+      };
+      const [c, ic, lab, ti, ac] = sets[lv.k];
+      document.getElementById('risk-status-card').className = `mt-4 p-5 rounded-2xl bg-${c}-50 border-2 border-${c}-${lv.k === 'green' || lv.k === 'none' ? 300 : lv.k === 'amber' ? 400 : 500} transition-all`;
+      document.getElementById('risk-status-icon').className = `w-12 h-12 rounded-full bg-${c}-${lv.k === 'none' ? 400 : 500} text-white flex items-center justify-center font-bold text-2xl flex-shrink-0`;
+      document.getElementById('risk-status-icon').innerText = ic;
+      document.getElementById('risk-status-level').className = `text-xs font-bold uppercase tracking-wider text-${c}-800 bg-${c}-100 px-3 py-1 rounded-md`;
+      document.getElementById('risk-status-level').innerText = lab;
+      document.getElementById('risk-status-title').className = `text-lg font-extrabold text-${c}-950 mt-2`;
+      document.getElementById('risk-status-title').innerText = ti;
+      document.getElementById('risk-status-action').className = `text-sm text-${c}-900 mt-1`;
+      document.getElementById('risk-status-action').innerText = ac;
+    }
+
+    function updateDoctorSummaryReport() {
+      if (!summaryPatientId || !patientProfiles[summaryPatientId]) summaryPatientId = activePatientId;
+      const id = summaryPatientId, p = patientProfiles[id], self = id === 'default', $ = x => document.getElementById(x);
+      const sel = $('doc-patient-select');
+      sel.innerHTML = Object.keys(patientProfiles).map(k => `<option value="${k}">${escapeHtml(patientProfiles[k].name)}</option>`).join('');
+      sel.value = id;
+      $('doc-summary-date').innerText = new Date().toLocaleDateString();
+      $('doc-profile-id').innerText = p.name;
+      $('doc-stage-name').innerText = self ? currentStage.toUpperCase() : 'PREGNANCY (MOTHER WATCH)';
+
+      const rd = p.readings, last = rd[rd.length - 1];
+      $('doc-vitals-val').innerText = last ? `${last.sys}/${last.dia} mmHg` : 'No readings';
+      if (self) {
+        let logs = []; try { logs = JSON.parse(localStorage.getItem('sakhi_90day_logs') || '[]'); } catch (e) {}
+        $('doc-mood-val').innerText = logs.length ? `Mood Avg: ${(logs.reduce((a, b) => a + b.mood, 0) / logs.length).toFixed(1)} of 5` : 'No check-ins';
+        $('doc-cycle-val').innerText = $('txt-current-phase').innerText;
+        $('doc-change-val').innerText = `Hot flashes: ${hotFlashCount}/day`;
+      } else {
+        ['doc-mood-val', 'doc-cycle-val', 'doc-change-val'].forEach(x => $(x).innerText = 'Not tracked');
+      }
+
+      const lv = last ? riskLevel(last) : { k: 'none' };
+      const cls = { none: 'bg-slate-50 border-slate-200 text-slate-700', green: 'bg-emerald-50 border-emerald-200 text-emerald-900', amber: 'bg-amber-50 border-amber-300 text-amber-900', red: 'bg-red-50 border-red-300 text-red-900' }[lv.k];
+      const txt = { none: 'No blood pressure readings logged for this patient yet.', green: '✓ GREEN: ' + lv.t, amber: '⚠ AMBER: ' + lv.t, red: '🚨 RED: ' + lv.t + '. Escalate today.' }[lv.k];
+      $('doc-risk-badge').className = `p-3 rounded-xl border text-xs font-semibold ${cls}`;
+      $('doc-risk-badge').innerText = txt + (last ? ` (latest reading ${new Date(last.date + 'T00:00').toLocaleDateString()})` : '');
+
+      let html = '';
+      const w = weeksFor(p.edd);
+      if (p.edd || rd.length || p.epds) {
+        html += `<div><h3 class="font-bold text-slate-800 text-sm mb-2 border-b border-slate-100 pb-1">Pregnancy &amp; Postpartum Record</h3><div class="text-xs text-slate-700 space-y-1">`;
+        if (p.edd) html += `<p><strong>Due date:</strong> ${new Date(p.edd + 'T00:00').toLocaleDateString()}${w !== null && w >= 0 && w <= 44 ? ` (${w} weeks, trimester ${w <= 12 ? 1 : w <= 27 ? 2 : 3})` : ''}</p>`;
+        const wt = rd.filter(r => r.weight);
+        if (wt.length > 1) html += `<p><strong>Weight:</strong> ${wt[0].weight} kg to ${wt[wt.length - 1].weight} kg (${(wt[wt.length - 1].weight - wt[0].weight >= 0 ? '+' : '') + (wt[wt.length - 1].weight - wt[0].weight).toFixed(1)} kg over ${wt.length} readings)</p>`;
+        const flagged = rd.filter(r => ['headache', 'vision', 'swelling', 'movement'].some(k => r[k])).length;
+        if (rd.length) html += `<p><strong>Readings logged:</strong> ${rd.length}, with warning symptoms on ${flagged}</p>`;
+        if (p.epds) html += `<p><strong>Postpartum mood screen:</strong> ${p.epds.score}/30 on ${new Date(p.epds.date + 'T00:00').toLocaleDateString()}${p.epds.q10 ? ' <span class="font-bold text-red-700">· reported thoughts of self-harm, follow up urgently</span>' : ''}</p>`;
+        html += '</div>';
+        if (rd.length) {
+          html += `<table class="w-full text-xs mt-2 text-left"><thead class="text-slate-500"><tr><th class="py-1">Date</th><th>BP</th><th>Weight</th><th>Symptoms</th></tr></thead><tbody>` +
+            rd.slice(-8).reverse().map(r => `<tr class="border-t border-slate-100"><td class="py-1">${new Date(r.date + 'T00:00').toLocaleDateString()}</td><td class="font-semibold">${r.sys}/${r.dia}</td><td>${r.weight ? r.weight + ' kg' : '–'}</td><td>${['headache', 'vision', 'swelling', 'movement'].filter(k => r[k]).map(k => ({ headache: 'headache', vision: 'vision changes', swelling: 'swelling', movement: 'low baby movement' }[k])).join(', ') || '–'}</td></tr>`).join('') + '</tbody></table>';
+        }
+        html += '</div>';
+      }
+      html += summaryExtra(p);
+      $('doc-patient-detail').innerHTML = html;
+      $('doc-user-notes').value = p.notes || '';
+    }
+
+    function saveDoctorNotes() {
+      const p = patientProfiles[summaryPatientId || activePatientId];
+      if (!p) return;
+      p.notes = document.getElementById('doc-user-notes').value;
+      savePatientProfilesToStorage();
+    }
+
+
+
+    function savePatientProfilesToStorage() {
+      localStorage.setItem('sakhi_patient_profiles', JSON.stringify(patientProfiles));
+    }
+
+
+    function renderPatientSelectDropdown() {
+      const sel = document.getElementById('patient-select');
+      sel.innerHTML = '';
+      Object.keys(patientProfiles).forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.innerText = patientProfiles[id].name;
+        sel.appendChild(opt);
+      });
+      sel.value = activePatientId;
+      loadPatientFormData(activePatientId);
+    }
+
+
+    // =========================================================================
+    // CHANGE COMPANION (INTERACTIVE PERIMENOPAUSE MODULE)
+    // =========================================================================
+    function changeFlashCount(delta) {
+      hotFlashCount = Math.max(0, hotFlashCount + delta);
+      document.getElementById('flash-count').innerText = hotFlashCount;
+      updateMenoPattern();
+    }
+
+
+    function updateMenoPattern() {
+      const sweats = document.getElementById('log-sweats').value;
+      const fog = document.getElementById('log-fog').value;
+      const cycle = document.getElementById('log-meno-cycle').value;
+      const patternText = document.getElementById('meno-pattern-text');
+      const tags = document.getElementById('meno-insight-tags');
+
+
+      let desc = [];
+      if (hotFlashCount > 3) desc.push(`Frequent hot flashes (${hotFlashCount}/day) noted.`);
+      if (sweats === 'severe') desc.push("Severe night sweats disrupting sleep.");
+      if (fog === 'high') desc.push("Notable brain fog reported.");
+      if (cycle === 'skipped' || cycle === 'no-period') desc.push("Cycle irregularity aligns with hormone shifts.");
+
+
+      if (desc.length > 0) {
+        patternText.innerText = desc.join(" ") + " These signs are characteristic of the perimenopause transition. Hydration, cooling sleep hygiene, and consulting a physician regarding HRT options can help.";
+      } else {
+        patternText.innerText = "Your logged symptoms show mild transition patterns. Continue tracking daily wellness metrics.";
+      }
+
+
+      tags.innerHTML = `
+        <span class="text-[11px] bg-white text-purple-800 font-bold px-2.5 py-1 rounded-md border border-purple-200">Hot Flashes: ${hotFlashCount}/day</span>
+        <span class="text-[11px] bg-white text-purple-800 font-bold px-2.5 py-1 rounded-md border border-purple-200">Night Sweats: ${sweats.toUpperCase()}</span>
+      `;
+    }
+
+
+    function saveMenopauseLog() {
+      updateMenoPattern();
+      localStorage.setItem('sakhi_meno_log', JSON.stringify({
+        flashes: hotFlashCount,
+        sweats: document.getElementById('log-sweats').value,
+        fog: document.getElementById('log-fog').value,
+        cycle: document.getElementById('log-meno-cycle').value
+      }));
+      alert("Perimenopause symptoms logged and synced to Doctor Summary!");
+    }
+
+
+    function toggleScreening(btn, key) {
+      screeningStatus[key] = !screeningStatus[key];
+      if (screeningStatus[key]) {
+        btn.innerText = "✓ Done";
+        btn.className = "screening-btn px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-lg shadow-sm";
+      } else {
+        btn.innerText = "Due / Done?";
+        btn.className = "screening-btn px-3 py-1 bg-teal-100 text-teal-800 text-xs font-bold rounded-lg hover:bg-teal-200";
+      }
+
+
+      const count = Object.values(screeningStatus).filter(Boolean).length;
+      document.getElementById('screening-progress').innerText = `${count} of 3 Done`;
+    }
+
+
+    // =========================================================================
+    // DOCTOR VISIT SUMMARY (LIVE DYNAMIC GENERATOR)
+    // =========================================================================
+
+
+    function printDoctorSummary() {
+      window.print();
+    }
+
+
+
+    // =========================================================================
+    // SHARED HELPERS
+    // =========================================================================
+    const DAYMS = 864e5;
+    const LS = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v === null || v === undefined ? d : v; } catch (e) { return d; } };
+    const SV = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+    const parseD = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+    const fmtD = (d, o) => d.toLocaleDateString(undefined, o || { day: 'numeric', month: 'short' });
+    const ordinal = n => { const v = n % 100; return n + (['th', 'st', 'nd', 'rd'][(v - 20) % 10] || ['th', 'st', 'nd', 'rd'][v] || 'th'); };
+    const addDaysISO = (s, n) => todayISO(new Date(parseD(s).getTime() + n * DAYMS));
+    function relTime(ts) {
+      const d = new Date(ts), t = new Date();
+      const dd = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / DAYMS);
+      return (dd === 0 ? 'Today' : dd === 1 ? 'Yesterday' : fmtD(d)) + ', ' + d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+    function notifyOnce(key, title, body) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      const k = 'sakhi_n_' + key + '_' + todayISO();
+      if (localStorage.getItem(k)) return;
+      try { new Notification(title, { body }); localStorage.setItem(k, '1'); } catch (e) {}
+    }
+    function enableAlerts() {
+      if (!('Notification' in window)) { toast('This browser does not support alerts.'); return; }
+      Notification.requestPermission().then(r => toast(r === 'granted' ? 'Alerts on. They show while Sakhi is open.' : 'Alerts were not allowed.'));
+    }
+    function downloadICS(events, name) {
+      const esc = t => String(t || '').replace(/[\\;,]/g, m => '\\' + m).replace(/\n/g, '\\n');
+      const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Sakhi//EN'];
+      events.forEach((e, i) => {
+        const d = e.date.replace(/-/g, '');
+        L.push('BEGIN:VEVENT', `UID:sakhi-${Date.now()}-${i}@sakhi.local`, 'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z');
+        if (e.time) { const t = e.time.replace(':', '') + '00'; L.push(`DTSTART:${d}T${t}`, `DTEND:${d}T${String(Math.min(23, +e.time.slice(0, 2) + 1)).padStart(2, '0')}${e.time.slice(3)}00`); }
+        else L.push(`DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${addDaysISO(e.date, 1).replace(/-/g, '')}`);
+        L.push('SUMMARY:' + esc(e.title), 'DESCRIPTION:' + esc(e.desc));
+        e.alarms.forEach(a => L.push('BEGIN:VALARM', 'TRIGGER:' + a, 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(e.title), 'END:VALARM'));
+        L.push('END:VEVENT');
+      });
+      L.push('END:VCALENDAR');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([L.join('\r\n')], { type: 'text/calendar' }));
+      a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // =========================================================================
+    // CYCLE TAB: CALENDAR, QUICK LOG, HISTORY, REMINDERS
+    // =========================================================================
+    let calM = new Date(); calM.setDate(1); let calSel = todayISO();
+    function recordPeriodStart(ds) {
+      if (!ds) return;
+      const a = LS('sakhi_period_starts', []);
+      if (!a.includes(ds)) { a.push(ds); a.sort(); SV('sakhi_period_starts', a); }
+      renderCycleExtras();
+    }
+    function dayInfo(d) {
+      const c = LS('sakhi_cycle', null); if (!c) return {};
+      const diff = Math.round((d - parseD(c.val)) / DAYMS); if (diff < 0) return {};
+      const k = diff % c.len, ov = c.len - 14, o = {};
+      if (k < c.per) o.period = 1;
+      if (k >= ov - 6 && k <= ov) o.fertile = 1;
+      if (k === ov - 1) o.ovul = 1;
+      return o;
+    }
+    function calNav(n) { calM = new Date(calM.getFullYear(), calM.getMonth() + n, 1); renderCalendar(); }
+    function calToday() { calM = new Date(); calM.setDate(1); calSel = todayISO(); renderCalendar(); }
+    function selectCalDay(ds) { calSel = ds; renderCalendar(); }
+    function renderCalendar() {
+      const grid = document.getElementById('cal-grid'); if (!grid) return;
+      const y = calM.getFullYear(), m = calM.getMonth(), lead = new Date(y, m, 1).getDay(), dim = new Date(y, m + 1, 0).getDate(), rows = Math.ceil((lead + dim) / 7);
+      document.getElementById('cal-title').innerText = calM.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+      const wd = new Date().getDay();
+      document.getElementById('cal-head').innerHTML = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((n, i) => `<span class="${i === wd ? 'font-extrabold text-slate-900' : ''}">${n}</span>`).join('');
+      const mark = {}; const add = (d, k) => { (mark[d] = mark[d] || {})[k] = 1; };
+      LS('sakhi_events', []).forEach(e => add(e.date, e.type)); LS('sakhi_90day_logs', []).forEach(l => add(l.date, 'sym'));
+      const today = todayISO(); let h = '';
+      for (let i = 0; i < rows * 7; i++) {
+        const d = new Date(y, m, 1 - lead + i), ds = todayISO(d), inM = d.getMonth() === m, inf = dayInfo(d), mk = mark[ds] || {};
+        const dots = [(inf.period || mk.period) ? '#f4606b' : '', inf.fertile ? '#1fb25a' : '', inf.ovul ? '#3b9dff' : '', (mk.sym || mk.mood || mk.symptoms) ? '#a43fc7' : ''].filter(Boolean);
+        h += `<button data-onclick="selectCalDay('${ds}')" aria-label="${ds}" class="h-12 sm:h-14 rounded-2xl flex flex-col items-center justify-center text-xs font-semibold ${inM ? 'bg-white text-slate-900' : 'bg-white/40 text-slate-400'} ${ds === today ? 'ring-2 ring-pink-400' : ''} ${ds === calSel ? 'ring-2 ring-rose-700' : ''}">${d.getDate()}<span class="flex gap-0.5 h-1.5 mt-1">${dots.map(c => `<i class="w-1.5 h-1.5 rounded-full" style="background:${c}"></i>`).join('')}</span></button>`;
+      }
+      grid.innerHTML = h;
+      const d = parseD(calSel), inf = dayInfo(d), tags = [];
+      if (inf.period) tags.push('Predicted period'); if (inf.fertile) tags.push('Fertile window'); if (inf.ovul) tags.push('Likely ovulation');
+      const ev = LS('sakhi_events', []).filter(e => e.date === calSel).map(e => `${e.type === 'period' ? '💧' : e.type === 'mood' ? '🙂' : e.type === 'sex' ? '🤍' : '🌡️'} ${e.label}`);
+      const lg = LS('sakhi_90day_logs', []).filter(l => l.date === calSel).map(l => `Check-in: mood ${l.mood}/5, sleep ${l.sleep}/5, pain ${l.pain}`);
+      document.getElementById('cal-detail').innerHTML = `<strong>${fmtD(d, { weekday: 'long', day: 'numeric', month: 'long' })}</strong><br>${tags.length ? tags.join(' · ') : 'No cycle events predicted for this day.'}${[...ev, ...lg].map(x => `<br>${x}`).join('')}`;
+    }
+
+    let qlSym = [];
+    const SYMQ = ['Cramps', 'Headache', 'Bloating', 'Nausea', 'Fatigue', 'Back pain', 'Tender breasts', 'Acne'];
+    const qlBtn = 'px-3 py-2 rounded-full bg-slate-100 hover:bg-rose-100 text-xs font-semibold';
+    function openQL(t) {
+      qlSym = []; const el = document.getElementById('ql-sheet'); el.classList.remove('hidden'); let h = '';
+      const opts = (arr, type) => `<div class="flex flex-wrap gap-2">${arr.map(x => `<button class="${qlBtn}" data-onclick="saveQL('${type}','${x}')">${x}</button>`).join('')}</div>`;
+      if (t === 'period') h = `<p class="font-bold text-sm mb-2">Log period</p><label class="flex items-center gap-2 mb-2"><input type="checkbox" id="ql-first"> Today is the first day of my period</label>${opts(['Spotting', 'Light flow', 'Medium flow', 'Heavy flow'], 'period')}`;
+      if (t === 'mood') h = `<p class="font-bold text-sm mb-2">How is your mood?</p>${opts(['😄 Happy', '🙂 Calm', '😐 Neutral', '😔 Anxious', '😫 Low'], 'mood')}`;
+      if (t === 'sex') h = `<p class="font-bold text-sm mb-2">Log (stays on this device)</p>${opts(['Protected', 'Unprotected'], 'sex')}`;
+      if (t === 'symptoms') h = `<p class="font-bold text-sm mb-2">Pick symptoms</p><div class="flex flex-wrap gap-2">${SYMQ.map(x => `<button class="${qlBtn}" data-onclick="toggleQLSym('${x}',this)">${x}</button>`).join('')}</div><button class="mt-3 bg-rose-600 text-white font-bold px-4 py-2 rounded-xl" data-onclick="saveQLSymptoms()">Save symptoms</button>`;
+      el.innerHTML = h + `<button class="mt-3 ml-2 text-slate-500 font-semibold" data-onclick="closeQL()">Cancel</button>`;
+    }
+    function toggleQLSym(x, b) { qlSym = qlSym.includes(x) ? qlSym.filter(y => y !== x) : [...qlSym, x]; b.classList.toggle('bg-rose-600'); b.classList.toggle('text-white'); b.classList.toggle('bg-slate-100'); }
+    function saveQL(type, label) {
+      if (!label) { toast('Pick at least one.'); return; }
+      const first = type === 'period' && document.getElementById('ql-first') && document.getElementById('ql-first').checked;
+      const ev = LS('sakhi_events', []); ev.push({ id: Date.now(), ts: Date.now(), date: todayISO(), type, label }); SV('sakhi_events', ev);
+      closeQL();
+      if (first) { document.getElementById('cycle-last-date').value = todayISO(); recordPeriodStart(todayISO()); calculateCyclePhase(); }
+      renderCycleExtras(); toast('Logged');
+    }
+    function delEvent(id) { SV('sakhi_events', LS('sakhi_events', []).filter(e => e.id !== id)); renderCycleExtras(); }
+    function renderRecent() {
+      const el = document.getElementById('recent-entries'); if (!el) return;
+      const icon = { period: '💧', mood: '🙂', symptoms: '🌡️', sex: '🤍', checkin: '📝' }, name = { period: 'Period', mood: 'Mood', symptoms: 'Symptoms', sex: 'Intimacy', checkin: 'Check-in' };
+      const mood = { 5: 'Great', 4: 'Calm', 3: 'Neutral', 2: 'Anxious', 1: 'Low' };
+      const all = [...LS('sakhi_events', []).map(e => ({ ...e })), ...LS('sakhi_90day_logs', []).map(l => ({ ts: l.timestamp, type: 'checkin', label: 'Mood ' + (mood[l.mood] || l.mood) + ', sleep ' + l.sleep + '/5' }))].sort((a, b) => b.ts - a.ts).slice(0, 6);
+      el.innerHTML = all.length ? all.map(e => `<div class="bg-white rounded-3xl p-3 card-shadow flex items-center gap-3"><div class="w-11 h-11 rounded-full flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#ff9bd5,#ff8a7a)">${icon[e.type]}</div><div class="flex-1"><p class="text-sm font-bold">${name[e.type]} · ${escapeHtml(e.label)}</p><p class="text-xs text-slate-500">${relTime(e.ts)}</p></div>${e.id ? `<button data-onclick="delEvent(${e.id})" class="text-slate-300 hover:text-red-600 text-lg" aria-label="Delete entry">&times;</button>` : ''}</div>`).join('') : '<p class="text-xs text-slate-500 bg-white rounded-3xl p-4">Nothing logged yet. Use Quick Log above.</p>';
+    }
+    function renderHistory() {
+      const el = document.getElementById('cycle-history'); if (!el) return;
+      const c = LS('sakhi_cycle', null);
+      if (!c) { el.innerHTML = '<p class="text-xs text-slate-500 bg-white rounded-3xl p-4">Enter your last period date in the calculator to start your cycle history.</p>'; return; }
+      const all = [...new Set([...LS('sakhi_period_starts', []), c.val])].sort(), today = parseD(todayISO()), out = [];
+      for (let i = all.length - 1; i >= 0 && out.length < 3; i--) {
+        const s0 = parseD(all[i]), nx = all[i + 1] ? parseD(all[i + 1]) : null, cur = !nx, len = cur ? c.len : Math.round((nx - s0) / DAYMS), diff = Math.round((today - s0) / DAYMS), ov = len - 14;
+        if (len < 5 || len > 90) continue;
+        let dots = '';
+        for (let k = 0; k < len; k++) { const col = k < c.per ? '#e5484d' : (k >= ov - 6 && k <= ov ? (k === ov - 1 ? '#3b9dff' : '#1fb25a') : '#cdb4f0'); const fut = cur && k > diff, now = cur && k === diff; dots += `<i class="inline-block rounded-full ${now ? 'w-3 h-3 ring-2 ring-slate-800' : 'w-2 h-2'} mr-1" style="background:${fut ? '#e4e4e7' : col}"></i>`; }
+        out.push(`<div class="bg-white rounded-3xl p-4 card-shadow"><div class="flex justify-between"><strong class="text-sm">${cur ? 'Current cycle' : 'Cycle'}: ${len} days</strong><span class="text-xs font-bold text-blue-600">${cur ? (diff >= len ? 'Period due' : ordinal(diff + 1) + ' day') : 'Completed'}</span></div><p class="text-xs text-slate-500">Started ${fmtD(s0, { day: 'numeric', month: 'long', year: 'numeric' })}</p><div class="mt-2 leading-4">${dots}</div></div>`);
+      }
+      el.innerHTML = out.join('');
+    }
+    function renderCycleExtras() { renderCalendar(); renderHistory(); renderRecent(); }
+    { const _a = calculateCyclePhase; calculateCyclePhase = function () { _a(); renderCycleExtras(); }; }
+    { const _b = loadStoredLogsAndUpdateSummary; loadStoredLogsAndUpdateSummary = function () { _b(); renderCycleExtras(); }; }
+
+    function savePeriodReminder() { SV('sakhi_pr', { on: document.getElementById('pr-on').checked, days: +document.getElementById('pr-days').value }); if (document.getElementById('pr-on').checked) enableAlerts(); restorePeriodReminder(); }
+    function nextPeriodDate() {
+      const c = LS('sakhi_cycle', null); if (!c) return null;
+      const diff = Math.round((parseD(todayISO()) - parseD(c.val)) / DAYMS);
+      return new Date(parseD(c.val).getTime() + c.len * (Math.floor(diff / c.len) + 1) * DAYMS);
+    }
+    function restorePeriodReminder() {
+      const pr = LS('sakhi_pr', { on: false, days: 2 }), on = document.getElementById('pr-on'); if (!on) return;
+      on.checked = pr.on; document.getElementById('pr-days').value = pr.days;
+      const nx = nextPeriodDate(), b = document.getElementById('pr-banner'); if (!nx) return;
+      const to = Math.round((nx - parseD(todayISO())) / DAYMS);
+      if (pr.on && to >= 0 && to <= pr.days) {
+        const t = to === 0 ? 'Your period is expected today.' : `Your period is expected in ${to} day${to > 1 ? 's' : ''} (${fmtD(nx)}).`;
+        b.innerHTML = `<div class="p-2 rounded-lg bg-pink-100 text-pink-900 font-bold">🔔 ${t}</div>`; notifyOnce('period', 'Sakhi period reminder', t);
+      } else b.innerHTML = '';
+    }
+    function periodICS() {
+      const c = LS('sakhi_cycle', null); if (!c) { toast('Set your last period date first.'); return; }
+      const pr = LS('sakhi_pr', { days: 2 }), ev = [];
+      for (let k = 1; k <= 3; k++) ev.push({ date: todayISO(new Date(parseD(c.val).getTime() + c.len * k * DAYMS)), title: 'Period expected (Sakhi)', desc: 'Estimate based on a ' + c.len + '-day cycle.', alarms: ['-P' + pr.days + 'D'] });
+      // first event may be in the past if the date is old, shift forward
+      downloadICS(ev.filter(e => e.date >= todayISO()), 'sakhi-period-reminders.ics');
+    }
+
+    // =========================================================================
+    // MOTHER WATCH: WEEK CALCULATOR, APPOINTMENTS, TESTS, CHARTS
+    // =========================================================================
+    const MILE = [[0, 'Early weeks. Start or continue folic acid and book your first antenatal visit.'], [8, 'First antenatal visit, blood tests and a dating scan are usually done around now.'], [13, 'Second trimester. Nausea often eases. Keep taking iron and folic acid as advised.'], [18, 'The anomaly scan is usually done between 18 and 20 weeks.'], [24, 'Glucose tolerance testing is usually done between 24 and 28 weeks.'], [28, 'Third trimester. Start counting baby kicks daily.'], [34, 'Visits become more frequent. Keep your hospital bag and papers ready.'], [37, 'Full term is close. Know your route to the hospital and who will take you.'], [40, 'Due date. Talk to your doctor about a plan if labour has not started.']];
+    function eddChanged() {
+      const p = patientProfiles[activePatientId]; p.edd = document.getElementById('preg-edd').value;
+      savePatientProfilesToStorage(); calculateTrimester(); renderPregWeek(); renderTests(); renderAppts();
+    }
+    function lmpChanged() {
+      const v = document.getElementById('pw-lmp').value; if (!v) return;
+      document.getElementById('preg-edd').value = addDaysISO(v, 280); eddChanged();
+    }
+    function renderPregWeek() {
+      const p = patientProfiles[activePatientId], el = document.getElementById('pw-result'); if (!el) return;
+      document.getElementById('pw-lmp').value = p.edd ? addDaysISO(p.edd, -280) : '';
+      if (!p.edd) { el.innerHTML = '<p class="text-xs text-slate-500">Enter the last period date or the due date to see the current week.</p>'; return; }
+      const days = Math.round((parseD(todayISO()) - parseD(addDaysISO(p.edd, -280))) / DAYMS);
+      if (days < 0 || days > 300) { el.innerHTML = '<p class="text-xs text-red-700 font-semibold">That date does not fit a current pregnancy. Please check it.</p>'; return; }
+      const w = Math.floor(days / 7), d = days % 7, left = 280 - days, tri = w < 13 ? 1 : w < 28 ? 2 : 3, note = [...MILE].reverse().find(x => w >= x[0])[1];
+      el.innerHTML = `<div class="flex flex-wrap items-end gap-x-4"><span class="text-3xl font-bold font-serif">Week ${w}${d ? ` + ${d} day${d > 1 ? 's' : ''}` : ''}</span><span class="text-xs font-bold text-purple-700 bg-purple-50 px-2 py-1 rounded-lg">Trimester ${tri}</span></div>
+        <div class="h-2.5 bg-slate-100 rounded-full mt-2 overflow-hidden"><div class="h-full bg-rose-600" style="width:${Math.min(100, days / 280 * 100)}%"></div></div>
+        <p class="text-xs text-slate-700 mt-2"><strong>Due date:</strong> ${fmtD(parseD(p.edd), { day: 'numeric', month: 'long', year: 'numeric' })} · ${left > 0 ? left + ' days to go' : 'due date has passed'}</p>
+        <p class="text-xs text-slate-600 mt-1">${note}</p>`;
+    }
+
+    function patAppts() { return patientProfiles[activePatientId].appts; }
+    function addAppt() {
+      const date = document.getElementById('ap-date').value; if (!date) { toast('Pick a date for the appointment.'); return; }
+      patAppts().push({ id: Date.now(), date, time: document.getElementById('ap-time').value, type: document.getElementById('ap-type').value.trim() || 'ANC check-up', place: document.getElementById('ap-place').value.trim(), notes: '', done: false });
+      ['ap-date', 'ap-time', 'ap-type', 'ap-place'].forEach(i => document.getElementById(i).value = '');
+      savePatientProfilesToStorage(); renderAppts(); toast('Appointment added');
+    }
+    function suggestAppts() {
+      const p = patientProfiles[activePatientId]; if (!p.edd) { toast('Enter the due date first.'); return; }
+      const lmp = addDaysISO(p.edd, -280); let n = 0;
+      [12, 20, 26, 30, 34, 36, 38, 40].forEach(w => {
+        const date = addDaysISO(lmp, w * 7), type = `ANC contact (week ${w})`;
+        if (date >= todayISO() && !p.appts.some(a => a.type === type)) { p.appts.push({ id: Date.now() + w, date, time: '', type, place: '', notes: '', done: false }); n++; }
+      });
+      savePatientProfilesToStorage(); renderAppts(); toast(n ? `${n} visits added (WHO 8-contact schedule)` : 'No upcoming visits to add');
+    }
+    function toggleAppt(id) { const a = patAppts().find(x => x.id === id); a.done = !a.done; savePatientProfilesToStorage(); renderAppts(); }
+    function delAppt(id) { const p = patientProfiles[activePatientId]; p.appts = p.appts.filter(x => x.id !== id); savePatientProfilesToStorage(); renderAppts(); }
+    function apptNote(id, v) { patAppts().find(x => x.id === id).notes = v; savePatientProfilesToStorage(); }
+    function apptICS(id) {
+      const a = patAppts().find(x => x.id === id), p = patientProfiles[activePatientId];
+      downloadICS([{ date: a.date, time: a.time, title: `${a.type} (${p.name})`, desc: a.place || 'Antenatal appointment', alarms: a.time ? ['-P1D', '-PT2H'] : ['-P1D'] }], 'sakhi-appointment.ics');
+    }
+    function renderAppts() {
+      const list = document.getElementById('appt-list'); if (!list) return;
+      const p = patientProfiles[activePatientId], today = parseD(todayISO());
+      const items = p.appts.slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+      list.innerHTML = items.length ? items.map(a => {
+        const dd = Math.round((parseD(a.date) - today) / DAYMS), cd = a.done ? 'Done' : dd === 0 ? 'Today' : dd === 1 ? 'Tomorrow' : dd > 0 ? 'in ' + dd + ' days' : Math.abs(dd) + ' days ago';
+        return `<div class="border border-slate-200 rounded-xl p-3 text-xs ${a.done ? 'opacity-60' : ''}"><div class="flex justify-between items-start gap-2"><label class="flex gap-2 cursor-pointer"><input type="checkbox" ${a.done ? 'checked' : ''} data-onchange="toggleAppt(${a.id})"><span><strong>${escapeHtml(a.type)}</strong><br>${fmtD(parseD(a.date), { weekday: 'short', day: 'numeric', month: 'short' })}${a.time ? ' · ' + a.time : ''}${a.place ? ' · ' + escapeHtml(a.place) : ''}</span></label><span class="font-bold ${!a.done && dd < 0 ? 'text-red-700' : 'text-teal-700'}">${cd}</span></div>
+          <textarea rows="2" data-oninput="apptNote(${a.id},this.value)" placeholder="Notes: what the doctor said, medicines, next steps..." class="w-full mt-2 border border-slate-200 rounded-lg p-2">${escapeHtml(a.notes || '')}</textarea>
+          <div class="flex gap-3 mt-1"><button data-onclick="apptICS(${a.id})" class="font-bold text-rose-700">Add to calendar</button><button data-onclick="delAppt(${a.id})" class="text-slate-400 hover:text-red-600">Delete</button></div></div>`;
+      }).join('') : '<p class="text-xs text-slate-500">No appointments yet.</p>';
+      const soon = items.filter(a => !a.done && Math.round((parseD(a.date) - today) / DAYMS) >= 0 && Math.round((parseD(a.date) - today) / DAYMS) <= 2);
+      const banner = soon.map(a => { const dd = Math.round((parseD(a.date) - today) / DAYMS); return `<div class="p-3 rounded-xl bg-amber-50 border border-amber-300 text-xs font-bold text-amber-900">🔔 ${escapeHtml(p.name)}: ${escapeHtml(a.type)} ${dd === 0 ? 'is today' : dd === 1 ? 'is tomorrow' : 'is in 2 days'}${a.time ? ' at ' + a.time : ''}. Carry reports and the Sakhi summary.</div>`; }).join('');
+      ['appt-alert', 'appt-alert-top'].forEach(i => { const e = document.getElementById(i); if (e) e.innerHTML = banner; });
+      soon.forEach(a => notifyOnce('ap' + a.id, 'Sakhi appointment reminder', `${a.type} on ${fmtD(parseD(a.date))}${a.time ? ' at ' + a.time : ''}`));
+    }
+
+    const TESTS = [
+      { h: 'First trimester (up to 12 weeks)', max: 12, t: [['hb1', 'Hemoglobin / CBC'], ['grp', 'Blood group and Rh factor'], ['uri1', 'Urine routine and culture'], ['sug1', 'Blood sugar'], ['inf', 'HIV, syphilis (VDRL) and Hepatitis B screening'], ['tsh', 'Thyroid (TSH)'], ['us1', 'Dating ultrasound']] },
+      { h: 'Second trimester (13 to 27 weeks)', max: 27, t: [['us2', 'Anomaly scan (18 to 20 weeks)'], ['ogtt', 'Glucose tolerance test (24 to 28 weeks)'], ['hb2', 'Repeat hemoglobin'], ['td', 'Tetanus (Td) vaccination as advised'], ['pro', 'Urine protein check']] },
+      { h: 'Third trimester (28 weeks onward)', max: 99, t: [['us3', 'Growth scan'], ['hb3', 'Repeat hemoglobin and urine routine'], ['gbs', 'Group B strep swab (35 to 37 weeks, if advised)'], ['nst', 'Baby movement or NST check as advised'], ['plan', 'Delivery plan and hospital registration']] }
+    ];
+    function curTri(p) { if (!p.edd) return -1; const w = Math.floor(Math.round((parseD(todayISO()) - parseD(addDaysISO(p.edd, -280))) / DAYMS) / 7); return w < 0 || w > 44 ? -1 : TESTS.findIndex(g => w <= g.max); }
+    function toggleTest(k) { const p = patientProfiles[activePatientId]; if (p.tests[k]) delete p.tests[k]; else p.tests[k] = todayISO(); savePatientProfilesToStorage(); renderTests(); }
+    function renderTests() {
+      const el = document.getElementById('tests-list'); if (!el) return;
+      const p = patientProfiles[activePatientId], ct = curTri(p), all = TESTS.flatMap(g => g.t);
+      document.getElementById('tests-progress').innerText = `${all.filter(t => p.tests[t[0]]).length} of ${all.length} done`;
+      el.innerHTML = TESTS.map((g, i) => `<details class="mb-2 border border-slate-200 rounded-xl p-2" ${i === (ct < 0 ? 0 : ct) ? 'open' : ''}><summary class="text-xs font-bold cursor-pointer">${g.h}${i === ct ? ' · now' : ''}</summary>${g.t.map(t => `<label class="flex items-center gap-2 text-xs py-1 cursor-pointer"><input type="checkbox" ${p.tests[t[0]] ? 'checked' : ''} data-onchange="toggleTest('${t[0]}')"><span class="${p.tests[t[0]] ? 'line-through text-slate-400' : ''}">${t[1]}</span></label>`).join('')}</details>`).join('');
+    }
+    function summaryExtra(p) {
+      let h = '';
+      const ap = (p.appts || []).slice().sort((a, b) => a.date.localeCompare(b.date));
+      if (ap.length) h += `<div><h3 class="font-bold text-slate-800 text-sm mb-2 border-b border-slate-100 pb-1">Appointments &amp; Notes</h3><div class="text-xs space-y-1.5">${ap.slice(-6).map(a => `<p><strong>${fmtD(parseD(a.date), { day: 'numeric', month: 'short', year: 'numeric' })}</strong> · ${escapeHtml(a.type)}${a.done ? ' (done)' : ''}${a.notes ? `<br><span class="text-slate-600">${escapeHtml(a.notes)}</span>` : ''}</p>`).join('')}</div></div>`;
+      const all = TESTS.flatMap(g => g.t), done = all.filter(t => p.tests && p.tests[t[0]]), ct = curTri(p);
+      if (done.length || ct >= 0) {
+        const pend = ct >= 0 ? TESTS[ct].t.filter(t => !(p.tests && p.tests[t[0]])) : [];
+        h += `<div><h3 class="font-bold text-slate-800 text-sm mb-2 border-b border-slate-100 pb-1">Tests</h3><div class="text-xs text-slate-700 space-y-1"><p><strong>Done (${done.length}):</strong> ${done.map(t => t[1]).join('; ') || 'none logged'}</p>${pend.length ? `<p><strong>Still due this trimester:</strong> ${pend.map(t => t[1]).join('; ')}</p>` : ''}</div></div>`;
+      }
+      return h;
+    }
+
+    let bpChart = null, wtChart = null;
+    function renderCharts() {
+      if (typeof Chart === 'undefined' || !document.getElementById('mw-bp-chart')) return;
+      const rd = patientProfiles[activePatientId].readings, lab = rd.map(r => r.date.slice(5));
+      [bpChart, wtChart].forEach(c => c && c.destroy());
+      document.getElementById('bp-empty').classList.toggle('hidden', rd.length > 0);
+      const line = (label, data, color, dash) => ({ label, data, borderColor: color, backgroundColor: color, tension: .25, borderDash: dash ? [6, 4] : [], pointRadius: dash ? 0 : 3 });
+      bpChart = new Chart(document.getElementById('mw-bp-chart'), { type: 'line', data: { labels: lab, datasets: [line('Systolic', rd.map(r => r.sys), '#7a3552'), line('Diastolic', rd.map(r => r.dia), '#3e5081'), line('140 limit', rd.map(() => 140), '#dc2626', true), line('90 limit', rd.map(() => 90), '#f59e0b', true)] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { suggestedMin: 60, suggestedMax: 160 } } } });
+      const wr = rd.filter(r => r.weight);
+      document.getElementById('wt-empty').classList.toggle('hidden', wr.length > 0);
+      wtChart = new Chart(document.getElementById('mw-wt-chart'), { type: 'line', data: { labels: wr.map(r => r.date.slice(5)), datasets: [line('Weight (kg)', wr.map(r => +r.weight), '#2f6656')] }, options: { responsive: true, maintainAspectRatio: false } });
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
+
+    // helpers for the bridge
+    function saveQLSymptoms() { saveQL('symptoms', qlSym.join(', ')); }
+    function closeQL() { document.getElementById('ql-sheet').classList.add('hidden'); }
+    function flipCard(el) { el.classList.toggle('flipped'); }
+    function __sakhiVar(n) { return n === 'activePatientId' ? activePatientId : n === 'qlSym' ? qlSym : undefined; }
