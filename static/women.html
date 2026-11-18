@@ -1,0 +1,653 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <title>Saarthi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Fraunces:opsz,wght@9..144,600&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="sakhi/sakhi.css">
+</head>
+<body data-page="women">
+  <a class="skip" href="#main" data-i18n="skip"></a>
+  <header id="top"></header>
+  <section class="hero">
+    <div class="in"><div class="copy">
+      <h1 data-i18n="nav_women"></h1>
+      <p data-i18n="wom_p"></p>
+    </div></div>
+  </section>
+  <main id="main">
+    <ul class="jump">
+      <li><a href="#cycle-mind">Cycle &amp; Mind</a></li>
+      <li><a href="#mother-watch">Mother Watch</a></li>
+      <li><a href="#cycle" data-i18n="p_h"></a></li>
+      <li><a href="#diary" data-i18n="y_h"></a></li>
+      <li><a href="#preg" data-i18n="g_h"></a></li>
+      <li><a href="#iron" data-i18n="i_h"></a></li>
+      <li><a href="#danger" data-i18n="n_h"></a></li>
+      <li><a href="#breast" data-i18n="b_h"></a></li>
+      <li><a href="#help" data-i18n="h_h"></a></li>
+    </ul>
+    <div id="sakhi">
+      <h2 class="sakhi-title" id="cycle-mind">Cycle &amp; Mind</h2>
+    <section id="sec-cycle-mind" class="space-y-6">
+      
+      <!-- TOP STATUS & CALCULATOR CARD -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- PERIOD DATE & CALCULATED PHASE -->
+        <div class="bg-white p-5 rounded-2xl border border-rose-100 card-shadow">
+          <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-3">
+            <i data-lucide="calendar" class="w-5 h-5 text-rose-600"></i>
+            <span>Cycle Phase Calculator</span>
+          </h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs font-medium text-slate-600">Last Period Start Date:</label>
+              <input type="date" id="cycle-last-date" data-oninput="calculateCyclePhase()" data-onchange="recordPeriodStart(this.value)" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-slate-600">Average Cycle Length (Days):</label>
+              <input type="number" id="cycle-length" value="28" min="20" max="45" data-oninput="calculateCyclePhase()" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold">
+            </div>
+            
+            <div>
+              <label class="text-xs font-medium text-slate-600">Usual Period Length (Days):</label>
+              <input type="number" id="period-length" value="5" min="2" max="10" data-oninput="calculateCyclePhase()" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold">
+            </div>
+            <!-- Result Box -->
+            <div id="cycle-phase-result" class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-center">
+              <span class="text-xs font-bold text-rose-600 uppercase tracking-wider block">CURRENT ESTIMATED PHASE</span>
+              <span id="txt-current-phase" class="text-lg font-extrabold text-rose-800">Follicular Phase (Day 8)</span>
+              <p id="txt-phase-desc" class="text-xs text-slate-600 mt-1">Estrogen rising. Energy and focus tend to increase.</p>
+            </div>
+            <div id="cycle-extra" class="space-y-3"></div>
+          </div>
+        </div>
+
+
+        <!-- 30-SEC DAILY CHECK-IN -->
+        <div class="md:col-span-2 space-y-6"><div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow">
+          <h3 class="font-bold text-slate-800 flex items-center gap-2 mb-1">
+            <i data-lucide="activity" class="w-5 h-5 text-purple-600"></i>
+            <span>Daily Mind & Body Check-in (Saved up to 90 Days)</span>
+          </h3>
+          <p class="text-xs text-slate-500 mb-4">Rate how you feel today. Logged data updates your 3-month analytics and doctor report.</p>
+
+
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <!-- Mood -->
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+              <label class="text-xs font-bold text-slate-700 block mb-1">Mood</label>
+              <select id="log-mood" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs font-semibold">
+                <option value="5">😄 Great</option>
+                <option value="4">🙂 Calm</option>
+                <option value="3" selected>😐 Neutral</option>
+                <option value="2">😔 Anxious</option>
+                <option value="1">😫 Low / Irritable</option>
+              </select>
+            </div>
+            <!-- Sleep -->
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+              <label class="text-xs font-bold text-slate-700 block mb-1">Sleep</label>
+              <select id="log-sleep" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs font-semibold">
+                <option value="5">😴 Restful (8h+)</option>
+                <option value="3" selected>😐 Average (6-7h)</option>
+                <option value="1">🥱 Poor (&lt;5h)</option>
+              </select>
+            </div>
+            <!-- Stress -->
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+              <label class="text-xs font-bold text-slate-700 block mb-1">Stress</label>
+              <select id="log-stress" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs font-semibold">
+                <option value="1">🧘 Low</option>
+                <option value="3" selected>⚖️ Moderate</option>
+                <option value="5">🚨 High</option>
+              </select>
+            </div>
+            <!-- Energy -->
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+              <label class="text-xs font-bold text-slate-700 block mb-1">Energy</label>
+              <select id="log-energy" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs font-semibold">
+                <option value="5">⚡ High</option>
+                <option value="3" selected>🔋 Normal</option>
+                <option value="1">🪫 Exhausted</option>
+              </select>
+            </div>
+            <!-- Pain -->
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 text-center col-span-2 sm:col-span-1">
+              <label class="text-xs font-bold text-slate-700 block mb-1">Cramps / Pain</label>
+              <select id="log-pain" class="w-full border border-slate-200 rounded-lg p-1.5 text-xs font-semibold">
+                <option value="0" selected>👌 None</option>
+                <option value="2">⚡ Mild</option>
+                <option value="5">💥 Severe</option>
+              </select>
+            </div>
+          </div>
+
+
+          <div class="mt-4 flex flex-wrap justify-between items-center gap-2">
+            <button data-onclick="saveDailyCheckIn()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2 rounded-xl text-xs sm:text-sm shadow-sm transition">
+              Save Today's Check-in
+            </button>
+            <span id="checkin-save-msg" class="text-xs text-emerald-600 font-semibold hidden">✓ Logged into 90-day history & summary!</span>
+          </div>
+        </div>
+
+
+
+          <!-- DYNAMIC CHART -->
+          <div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-bold text-slate-800">Your Real Logged Trends (Mood & Sleep)</h3>
+                <p class="text-xs text-slate-500">Updates live as you log check-ins over time</p>
+              </div>
+              <button data-onclick="loadDemoCycleData()" class="text-xs bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg text-slate-600 font-medium">Load Sample 14-Day Data</button>
+            </div>
+            <div class="relative h-64 w-full">
+              <canvas id="cycleChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- REAL-TIME LOGGED SUMMARY CARD & CHART -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- REAL DYNAMIC CHART & SUMMARY METRICS -->
+        <div class="lg:col-span-2 space-y-4">
+          
+          <!-- 30/90-DAY METRIC SUMMARY CARDS -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-rose-50 border border-rose-100 p-3 rounded-2xl text-center">
+              <span class="text-[10px] uppercase font-extrabold text-rose-600 tracking-wider">Total Check-ins</span>
+              <span id="stat-total-logs" class="text-xl font-extrabold text-rose-900 block mt-1">0</span>
+              <span class="text-[10px] text-slate-500">Up to 90 Days</span>
+            </div>
+            <div class="bg-purple-50 border border-purple-100 p-3 rounded-2xl text-center">
+              <span class="text-[10px] uppercase font-extrabold text-purple-600 tracking-wider">Avg Mood Score</span>
+              <span id="stat-avg-mood" class="text-xl font-extrabold text-purple-900 block mt-1">--</span>
+              <span class="text-[10px] text-slate-500">Scale 1-5</span>
+            </div>
+            <div class="bg-teal-50 border border-teal-100 p-3 rounded-2xl text-center">
+              <span class="text-[10px] uppercase font-extrabold text-teal-600 tracking-wider">Avg Sleep</span>
+              <span id="stat-avg-sleep" class="text-xl font-extrabold text-teal-900 block mt-1">--</span>
+              <span class="text-[10px] text-slate-500">Scale 1-5</span>
+            </div>
+            <div class="bg-amber-50 border border-amber-100 p-3 rounded-2xl text-center">
+              <span class="text-[10px] uppercase font-extrabold text-amber-600 tracking-wider">Severe Pain Days</span>
+              <span id="stat-pain-days" class="text-xl font-extrabold text-amber-900 block mt-1">0</span>
+              <span class="text-[10px] text-slate-500">Logged Cramps</span>
+            </div>
+          </div>
+
+
+          <!-- CALENDAR -->
+          <div class="rounded-[28px] p-4 sm:p-5 card-shadow border" style="background:linear-gradient(160deg,rgba(246,138,216,.28),rgba(255,159,140,.22) 45%,rgba(217,208,255,.35))">
+            <div class="flex items-center justify-between">
+              <h3 class="text-3xl font-bold text-slate-900">Calendar</h3>
+              <div class="flex items-center gap-1 bg-white rounded-full px-1 py-1 text-xs font-bold">
+                <button data-onclick="calNav(-1)" class="w-7 h-7 rounded-full hover:bg-slate-100" aria-label="Previous month">‹</button>
+                <button data-onclick="calToday()" id="cal-title" class="px-2">Month</button>
+                <button data-onclick="calNav(1)" class="w-7 h-7 rounded-full hover:bg-slate-100" aria-label="Next month">›</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-7 gap-1.5 text-center text-[11px] text-slate-500 mt-4 mb-1.5" id="cal-head"></div>
+            <div id="cal-grid" class="grid grid-cols-7 gap-1.5"></div>
+            <div id="cal-detail" class="mt-3 bg-white/90 rounded-2xl p-3 text-xs text-slate-700"></div>
+            <h4 class="font-bold text-sm mt-4 mb-2">Legend</h4>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="bg-white rounded-2xl p-3 flex items-center gap-2"><i class="w-2.5 h-2.5 rounded-full" style="background:#f4606b"></i>Period</div>
+              <div class="bg-white rounded-2xl p-3 flex items-center gap-2"><i class="w-2.5 h-2.5 rounded-full" style="background:#1fb25a"></i>Fertile days</div>
+              <div class="bg-white rounded-2xl p-3 flex items-center gap-2"><i class="w-2.5 h-2.5 rounded-full" style="background:#3b9dff"></i>Ovulation</div>
+              <div class="bg-white rounded-2xl p-3 flex items-center gap-2"><i class="w-2.5 h-2.5 rounded-full" style="background:#a43fc7"></i>Symptoms / Mood</div>
+            </div>
+          </div>
+
+          <!-- QUICK LOG, CYCLE HISTORY, RECENT ENTRIES -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+              <h3 class="text-xl font-bold">Quick Log</h3>
+              <div class="grid grid-cols-4 gap-2">
+                <button data-onclick="openQL('period')" class="bg-white rounded-3xl py-4 card-shadow text-xs font-semibold flex flex-col items-center gap-1"><span class="text-xl">💧</span>Period</button>
+                <button data-onclick="openQL('mood')" class="bg-white rounded-3xl py-4 card-shadow text-xs font-semibold flex flex-col items-center gap-1"><span class="text-xl">🙂</span>Mood</button>
+                <button data-onclick="openQL('symptoms')" class="bg-white rounded-3xl py-4 card-shadow text-xs font-semibold flex flex-col items-center gap-1"><span class="text-xl">🌡️</span>Symptoms</button>
+                <button data-onclick="openQL('sex')" class="bg-white rounded-3xl py-4 card-shadow text-xs font-semibold flex flex-col items-center gap-1"><span class="text-xl">🤍</span>Sex</button>
+              </div>
+              <div id="ql-sheet" class="hidden bg-white rounded-3xl p-4 card-shadow text-xs"></div>
+              <h3 class="text-xl font-bold pt-2">Recent entries</h3>
+              <div id="recent-entries" class="space-y-2"></div>
+            </div>
+            <div class="space-y-4">
+              <h3 class="text-xl font-bold">Cycle history</h3>
+              <div id="cycle-history" class="space-y-3"></div>
+            </div>
+          </div>
+
+
+        </div>
+
+
+        <!-- PMDD & POSTPARTUM RISK ALERTS -->
+        <div class="space-y-4">
+          
+          <!-- PMDD ALERT CARD WITH INTERACTIVE GUIDELINE MODAL TRIGGER -->
+          <div id="pmdd-alert-card" class="bg-amber-50 border border-amber-200 p-4 rounded-2xl">
+            <div class="flex items-start gap-3">
+              <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"></i>
+              <div>
+                <h4 class="font-bold text-amber-900 text-sm">PMDD Pattern Alert</h4>
+                <p class="text-xs text-amber-800 mt-1">If severe mood dips or rage occur repeatedly 7–10 days before your period, it may indicate PMDD.</p>
+                <button data-onclick="openPMDDModal()" class="mt-3 text-xs font-bold text-amber-900 bg-amber-200 hover:bg-amber-300 px-3 py-1.5 rounded-lg inline-flex items-center gap-1 transition">
+                  <i data-lucide="book-open" class="w-3.5 h-3.5"></i> Read Interactive PMDD Clinical Guide →
+                </button>
+              </div>
+            </div>
+          </div>
+
+
+          <!-- POSTPARTUM MOOD SCREENER (10 questions, scored) -->
+          <div class="bg-white border border-rose-100 p-4 rounded-2xl card-shadow">
+            <h4 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+              <i data-lucide="heart" class="w-4 h-4 text-rose-500"></i>
+              <span>Postpartum Mood Screener</span>
+            </h4>
+            <p class="text-xs text-slate-500 mt-1">Ten questions about the past 7 days, based on the Edinburgh Postnatal Depression Scale. It flags who should talk to a doctor. It does not diagnose.</p>
+            <p class="text-[11px] text-slate-500 mt-1">Saving result to: <strong id="epds-patient">Self Profile</strong></p>
+            <div id="epds-form" class="mt-3 space-y-3 text-xs"></div>
+            <div class="flex gap-2 mt-3">
+              <button data-onclick="checkPostpartumScreening()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold py-2 rounded-xl transition">See my score</button>
+              <button data-onclick="renderEpds()" class="px-3 border border-slate-300 text-slate-600 text-xs font-bold rounded-xl">Reset</button>
+            </div>
+            <div id="pp-result" class="mt-2 text-xs hidden"></div>
+          </div>
+
+
+        </div>
+
+
+      </div>
+
+
+    
+</section>
+      <h2 class="sakhi-title" id="mother-watch">Mother Watch</h2>
+    <section id="sec-mother-watch" class="space-y-6">
+      
+      <!-- HEALTH WORKER MODE TOGGLE & PATIENT SELECTOR -->
+      <div class="bg-teal-50 border border-teal-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 bg-teal-600 text-white rounded-xl">
+            <i data-lucide="users" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h4 class="font-bold text-teal-900 text-sm">Health Worker & Personal Pregnancy Log</h4>
+            <p class="text-xs text-teal-700">Add custom patient profiles with independent data saved to LocalStorage.</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <select id="patient-select" data-onchange="switchPatientProfile(this.value)" class="bg-white border border-teal-300 text-slate-800 text-xs font-bold rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-500">
+            <!-- Dynamically populated -->
+          </select>
+          <button data-onclick="addNewPatientPrompt()" class="bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold px-3 py-2 rounded-xl whitespace-nowrap shadow-sm">
+            + New Patient Profile
+          </button>
+        </div>
+      </div>
+
+
+      <!-- PREGNANCY WEEK CALCULATOR -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow">
+        <h3 class="font-bold text-slate-800 mb-3">Pregnancy Week Calculator</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label class="text-xs font-bold text-slate-600">First day of last period (LMP):</label>
+            <input type="date" id="pw-lmp" data-onchange="lmpChanged()" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold">
+            <p class="text-[11px] text-slate-500 mt-1">Or enter the due date in the box below. Each one fills the other.</p>
+          </div>
+          <div class="sm:col-span-2" id="pw-result"></div>
+        </div>
+      </div>
+
+      <div id="appt-alert-top"></div>
+
+      <!-- PREGNANCY PROFILE & RISK STATUS ENGINE -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- LEFT: DUE DATE & VITAL LOGGERS -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow space-y-4">
+          <div class="flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="clipboard-list" class="w-5 h-5 text-rose-600"></i>
+              <span>Vitals & Risk Entry</span>
+            </h3>
+            <span id="active-profile-badge" class="text-[10px] bg-purple-100 text-purple-800 font-extrabold px-2 py-0.5 rounded-full">Self Profile</span>
+          </div>
+
+
+          <div>
+            <label class="text-xs font-bold text-slate-600">Estimated Due Date (EDD):</label>
+            <input type="date" id="preg-edd" data-onchange="eddChanged()" class="w-full mt-1 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold">
+            <div id="trimester-badge" class="mt-2 text-xs font-bold text-purple-700 bg-purple-50 p-2 rounded-lg border border-purple-100">
+              Trimester: Select EDD date above
+            </div>
+          </div>
+
+
+          <!-- Vital Inputs -->
+          <div class="space-y-3 pt-2 border-t border-slate-100">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="text-xs font-medium text-slate-600">Systolic BP (mmHg):</label>
+                <input type="number" id="vital-sys" placeholder="e.g. 120" class="w-full border border-slate-200 rounded-xl p-2 text-xs font-semibold">
+              </div>
+              <div>
+                <label class="text-xs font-medium text-slate-600">Diastolic BP (mmHg):</label>
+                <input type="number" id="vital-dia" placeholder="e.g. 80" class="w-full border border-slate-200 rounded-xl p-2 text-xs font-semibold">
+              </div>
+            </div>
+
+
+            <div>
+              <label class="text-xs font-medium text-slate-600">Weight (kg):</label>
+              <input type="number" id="vital-weight" placeholder="e.g. 62.5" step="0.5" class="w-full border border-slate-200 rounded-xl p-2 text-xs font-semibold">
+            </div>
+
+
+            <!-- Warning Checkboxes -->
+            <div class="space-y-1.5 pt-2">
+              <span class="text-xs font-bold text-slate-700 block">Symptom Check:</span>
+              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <input type="checkbox" id="chk-headache" class="rounded text-rose-600">
+                <span>Severe or Persistent Headache</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <input type="checkbox" id="chk-vision" class="rounded text-rose-600">
+                <span>Blurry vision / Seeing spots</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <input type="checkbox" id="chk-swelling" class="rounded text-rose-600">
+                <span>Sudden swelling in hands or face</span>
+              </label>
+              <label class="flex items-center gap-2 text-xs text-slate-700 cursor-pointer">
+                <input type="checkbox" id="chk-movement" class="rounded text-rose-600">
+                <span>Decreased fetal baby movement</span>
+              </label>
+            </div>
+
+
+            <button data-onclick="saveAndEvaluateMotherWatch()" class="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs sm:text-sm shadow-sm transition">
+              Save Today&#39;s Reading
+            </button>
+          </div>
+        </div>
+
+
+        <!-- RIGHT: TRI-COLOR RISK STATUS DISPLAY -->
+        <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-100 card-shadow flex flex-col justify-between">
+          <div>
+            <h3 class="font-bold text-slate-800 text-lg flex items-center justify-between">
+              <span>Maternal Risk Triage</span>
+              <span class="text-xs font-normal text-slate-400">WHO / ICMR Triage Protocol</span>
+            </h3>
+
+
+            <!-- STATUS BOX ENGINE -->
+            <div id="risk-status-card" class="mt-4 p-5 rounded-2xl bg-emerald-50 border-2 border-emerald-300 transition-all">
+              <div class="flex items-start gap-4">
+                <div id="risk-status-icon" class="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-2xl flex-shrink-0">
+                  ✓
+                </div>
+                <div>
+                  <span id="risk-status-level" class="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-100 px-3 py-1 rounded-md">
+                    GREEN STATUS - NORMAL
+                  </span>
+                  <h4 id="risk-status-title" class="text-lg font-extrabold text-emerald-950 mt-2">All Logged Vitals Are Within Normal Range</h4>
+                  <p id="risk-status-action" class="text-sm text-emerald-900 mt-1">Continue routine antenatal care check-ups and daily iron-folic acid tablets as advised by your doctor.</p>
+                </div>
+              </div>
+            </div>
+
+
+            <!-- RED FLAG RULES RECAP -->
+            <div class="mt-6 bg-slate-50 p-4 rounded-xl border border-slate-200">
+              <h4 class="font-bold text-slate-800 text-xs uppercase tracking-wider mb-2">Clinical Warning Thresholds:</h4>
+              <ul class="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+                <li><strong>Red Status Trigger:</strong> Systolic BP ≥ 140 or Diastolic BP ≥ 90 mmHg OR BP ≥ 130/80 with severe headache / vision changes. Requires urgent hospital evaluation.</li>
+                <li><strong>Amber Status Trigger:</strong> Weight gain &gt; 2kg in a week, mild leg swelling, or missed tests. Schedule visit within 48 hours.</li>
+                <li><strong>Baby Movement:</strong> Fewer than 10 kicks in 2 hours during third trimester requires immediate clinical assessment.</li>
+              </ul>
+            </div>
+          </div>
+
+
+          <!-- APPOINTMENT & TEST REMINDERS -->
+          <div class="mt-6 border-t border-slate-100 pt-4">
+            <h4 class="font-bold text-slate-800 text-xs mb-2">Trimester Clinical Milestones:</h4>
+            <div class="grid grid-cols-3 gap-2 text-center text-xs">
+              <div class="p-2 bg-rose-50 rounded-lg text-rose-800 font-semibold border border-rose-100">
+                1st Trim: Dating Ultrasound & Blood Test
+              </div>
+              <div class="p-2 bg-purple-50 rounded-lg text-purple-800 font-semibold border border-purple-100">
+                2nd Trim: Anomaly Scan & Glucose Test
+              </div>
+              <div class="p-2 bg-teal-50 rounded-lg text-teal-800 font-semibold border border-teal-100">
+                3rd Trim: Growth Scan & GBS Test
+              </div>
+            </div>
+          </div>
+
+
+        </div>
+
+
+      </div>
+
+
+    
+      <!-- EMERGENCY GUIDANCE -->
+      <div class="bg-red-50 border-2 border-red-400 rounded-2xl p-5">
+        <h3 class="text-lg font-extrabold text-red-800">🚨 Warning signs: do not wait</h3>
+        <p class="text-sm font-semibold text-red-900 mt-1">इनमें से कोई भी लक्षण हो तो तुरंत अस्पताल जाएं या 108 पर कॉल करें।</p>
+        <div class="grid sm:grid-cols-2 gap-4 mt-3 text-xs text-red-950">
+          <div><h4 class="font-bold uppercase tracking-wider text-red-800 mb-1">Go to hospital now / call 108</h4>
+            <ul class="list-disc pl-4 space-y-1"><li>Heavy vaginal bleeding</li><li>Fits (convulsions) or fainting</li><li>Severe headache with blurred vision or spots</li><li>Severe belly pain</li><li>Baby moving much less, or not at all</li><li>Water breaking, or green or foul-smelling fluid</li><li>Trouble breathing or chest pain</li><li>High fever with shivering</li><li>BP 140/90 or higher</li></ul></div>
+          <div><h4 class="font-bold uppercase tracking-wider text-amber-800 mb-1">Call your doctor the same day</h4>
+            <ul class="list-disc pl-4 space-y-1 text-amber-950"><li>Swelling of face or hands</li><li>Vomiting that will not stop</li><li>Burning while passing urine</li><li>Regular contractions before 37 weeks</li><li>Itching of palms and soles</li></ul>
+            <h4 class="font-bold uppercase tracking-wider text-red-800 mt-3 mb-1">After delivery</h4>
+            <ul class="list-disc pl-4 space-y-1"><li>Soaking a pad every hour, fever, or foul discharge</li><li>Thoughts of harming yourself or the baby: call Tele-MANAS 14416 or 112</li></ul></div>
+        </div>
+        <div class="flex flex-wrap gap-2 mt-4">
+          <a href="tel:108" class="bg-red-600 text-white font-bold text-sm px-4 py-2 rounded-xl">Call ambulance 108</a>
+          <a href="tel:112" class="bg-red-100 text-red-800 font-bold text-sm px-4 py-2 rounded-xl">Emergency 112</a>
+          <a href="tel:14416" class="bg-white border border-red-300 text-red-800 font-bold text-sm px-4 py-2 rounded-xl">Tele-MANAS 14416</a>
+        </div>
+      </div>
+
+      <!-- READINGS HISTORY FOR ACTIVE PATIENT -->
+      <div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h3 class="font-bold text-slate-800">Readings for <span id="mw-name">Self Profile</span></h3>
+          <div class="flex gap-2">
+            <button id="mw-delete" data-onclick="deleteActivePatient()" class="border border-red-300 text-red-700 text-xs font-bold px-3 py-2 rounded-xl">Delete patient</button>
+          </div>
+        </div>
+        <div id="mw-history" class="overflow-x-auto"></div>
+      </div>
+
+    
+      <!-- CHARTS -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow"><h3 class="font-bold text-slate-800 mb-2">Blood pressure history</h3><p id="bp-empty" class="text-xs text-slate-500 hidden">Save at least one reading to see the chart.</p><div class="relative h-56"><canvas id="mw-bp-chart"></canvas></div></div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow"><h3 class="font-bold text-slate-800 mb-2">Weight history</h3><p id="wt-empty" class="text-xs text-slate-500 hidden">Save a reading with weight to see the chart.</p><div class="relative h-56"><canvas id="mw-wt-chart"></canvas></div></div>
+      </div>
+
+      <!-- APPOINTMENTS + TESTS -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow space-y-3">
+          <h3 class="font-bold text-slate-800">Antenatal appointments &amp; reminders</h3>
+          <div id="appt-alert"></div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <input type="date" id="ap-date" class="border border-slate-200 rounded-xl px-2 py-2">
+            <input type="time" id="ap-time" class="border border-slate-200 rounded-xl px-2 py-2">
+            <input type="text" id="ap-type" placeholder="Visit (e.g. ANC check-up, scan)" class="border border-slate-200 rounded-xl px-2 py-2">
+            <input type="text" id="ap-place" placeholder="Hospital / doctor" class="border border-slate-200 rounded-xl px-2 py-2">
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button data-onclick="addAppt()" class="bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-xl">Add appointment</button>
+            <button data-onclick="suggestAppts()" class="border border-slate-300 text-xs font-bold px-3 py-2 rounded-xl">Suggest WHO visit schedule</button>
+            <button data-onclick="enableAlerts()" class="border border-slate-300 text-xs font-bold px-3 py-2 rounded-xl">Turn on alerts</button>
+          </div>
+          <div id="appt-list" class="space-y-2"></div>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-100 card-shadow">
+          <div class="flex justify-between items-center mb-1"><h3 class="font-bold text-slate-800">Tests recommended by your doctor</h3><span id="tests-progress" class="text-xs font-bold text-teal-700"></span></div>
+          <p class="text-[11px] text-slate-500 mb-3">Tick each test when it is done. Your doctor may add or skip some.</p>
+          <div id="tests-list"></div>
+        </div>
+      </div>
+
+    </section>
+  <div id="modal-pmdd" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-amber-200 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="text-lg font-extrabold text-amber-900 flex items-center gap-2">
+          <i data-lucide="book-open" class="w-5 h-5 text-amber-600"></i> PMDD Clinical Guidance (ACOG/DSM-5)
+        </h3>
+        <button data-onclick="closePMDDModal()" class="text-slate-400 hover:text-slate-600 font-bold text-xl">&times;</button>
+      </div>
+
+
+      <p class="text-xs text-slate-600 leading-relaxed">
+        Premenstrual Dysphoric Disorder (PMDD) is a severe, neurobiological reaction to natural hormone fluctuations during the luteal phase (7–14 days before menstruation).
+      </p>
+
+
+      <div class="bg-amber-50 p-4 rounded-2xl border border-amber-200 space-y-2 text-xs">
+        <h4 class="font-bold text-amber-950 uppercase text-[11px] tracking-wider">Key Diagnostic Criteria (Must clear post-period):</h4>
+        <ul class="list-disc pl-4 space-y-1 text-amber-900">
+          <li>Marked mood swings, sudden sadness, or intense tearfulness</li>
+          <li>Persistent, severe irritability, anger, or interpersonal conflicts</li>
+          <li>Marked anxiety, tension, or feeling "on edge"</li>
+          <li>Loss of interest in daily activities, fatigue, or sleep changes</li>
+        </ul>
+      </div>
+
+
+      <div class="space-y-2 text-xs">
+        <h4 class="font-bold text-slate-800">Evidence-Based Management Steps:</h4>
+        <p class="text-slate-600">1. <strong>Cycle Logging:</strong> Keep daily mood logs for 2–3 consecutive cycles to confirm timing.</p>
+        <p class="text-slate-600">2. <strong>Lifestyle Support:</strong> Aerobic exercise, reduced caffeine/alcohol, and Calcium/Vitamin B6 supplementation under supervision.</p>
+        <p class="text-slate-600">3. <strong>Medical Options:</strong> Consult your doctor regarding SSRIs or specific oral contraceptives approved for PMDD.</p>
+      </div>
+
+
+      <div class="pt-2 flex flex-col sm:flex-row gap-2">
+        <a href="tel:14416" class="flex-1 bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl text-xs text-center shadow transition flex items-center justify-center gap-1">
+          <i data-lucide="phone" class="w-3.5 h-3.5"></i> Tele-MANAS Helpline (14416)
+        </a>
+        <button data-onclick="closePMDDModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-4 py-2 rounded-xl text-xs">
+          Close Guide
+        </button>
+      </div>
+    </div>
+  </div>
+    </div>
+
+    <h2 class="sec-title">More Sakhii tools</h2>
+    <div class="cards">
+      <section class="panel" id="cycle">
+        <h2 data-i18n="p_h"></h2>
+        <p id="pinfo" data-i18n="p_info"></p>
+        <div class="row"><button type="button" class="btn ghost" data-say="#pinfo" data-i18n="listen"></button><button type="button" class="btn ghost halt" data-i18n="stop"></button></div>
+        <form id="fc">
+          <label for="lp" data-i18n="p_last"></label>
+          <input id="lp" type="date" required>
+          <label for="cl" data-i18n="p_len"></label>
+          <input id="cl" type="number" min="20" max="45" value="28" required>
+          <div class="row"><button class="btn" data-i18n="save"></button></div>
+        </form>
+        <p id="cres" class="res" role="status"></p>
+        <p class="note" data-i18n="p_note"></p>
+      </section>
+      <section class="panel alt" id="diary">
+        <h2 data-i18n="y_h"></h2>
+        <form id="fy">
+          <label for="yd" data-i18n="v_date"></label>
+          <input id="yd" type="date" required>
+          <div class="two">
+            <div><label for="yf" data-i18n="y_flow"></label><select id="yf"></select></div>
+            <div><label for="yp" data-i18n="y_pain"></label><select id="yp"></select></div>
+          </div>
+          <label for="ym" data-i18n="y_mood"></label>
+          <select id="ym"></select>
+          <label for="yn" data-i18n="y_note"></label>
+          <input id="yn" maxlength="80">
+          <div class="row"><button class="btn" data-i18n="save"></button></div>
+        </form>
+        <p id="yflag" class="alert" role="alert"></p>
+        <ul id="yl" class="list"></ul>
+      </section>
+      <section class="panel alt" id="preg">
+        <h2 data-i18n="g_h"></h2>
+        <form id="fg">
+          <label for="gl" data-i18n="p_last"></label>
+          <input id="gl" type="date" required>
+          <div class="row"><button class="btn" data-i18n="c_calc"></button></div>
+        </form>
+        <p id="gres" class="res" role="status"></p>
+        <p class="note" data-i18n="g_note"></p>
+      </section>
+      <section class="panel" id="iron">
+        <h2 data-i18n="i_h"></h2>
+        <p data-i18n="i_q"></p>
+        <div id="ironbox" class="chk"></div>
+        <p id="ires" class="res" role="status"></p>
+        <p id="ifood"></p>
+        <div class="row"><button type="button" class="btn ghost" data-say="#ifood" data-i18n="listen"></button><button type="button" class="btn ghost halt" data-i18n="stop"></button></div>
+      </section>
+      <section class="panel" id="danger">
+        <h2 data-i18n="n_h"></h2>
+        <p data-i18n="n_q"></p>
+        <div id="dangerbox" class="chk"></div>
+        <p id="nres" class="alert" role="alert"></p>
+        <p id="nok" class="res" role="status"></p>
+      </section>
+      <section class="panel alt" id="breast">
+        <h2 data-i18n="b_h"></h2>
+        <ol id="bsteps"></ol>
+        <p data-i18n="b_when"></p>
+        <form id="fbr">
+          <label for="bd" data-i18n="b_day"></label>
+          <input id="bd" type="number" min="1" max="28" required>
+          <div class="row"><button class="btn" data-i18n="save"></button></div>
+        </form>
+        <p id="bres" class="res" role="status"></p>
+        <p class="note" data-i18n="b_see"></p>
+      </section>
+      <section class="panel wide" id="help">
+        <h2 data-i18n="h_h"></h2>
+        <div id="hl" class="helplines"></div>
+        <p class="note" data-i18n="h_nums"></p>
+        <p id="hdoc"></p>
+        <div class="row"><button type="button" class="btn ghost" data-say="#hdoc" data-i18n="listen"></button><button type="button" class="btn ghost halt" data-i18n="stop"></button></div>
+      </section>
+    </div>
+  </main>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+  <script src="women.js"></script>
+  <script src="sakhi/vendor/chart.umd.min.js"></script>
+  <script src="sakhi/vendor/lucide.min.js"></script>
+  <script src="sakhi/legacy.js"></script>
+  <script src="sakhi/bridge.js"></script>
+</body>
+</html>

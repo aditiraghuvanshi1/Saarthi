@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <title>Saarthi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,600&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="read">
+  <a class="skip" href="#main" data-i18n="skip"></a>
+  <header id="top"></header>
+  <section class="hero">
+    <div class="in"><div class="copy">
+      <h1 data-i18n="nav_read"></h1>
+      <p data-i18n="read_p"></p>
+    </div></div>
+  </section>
+  <main id="main">
+    <div class="split flip">
+      <section class="panel">
+        <h2 data-i18n="yourfile"></h2>
+        <label class="drop" for="f"><span data-i18n="choose"></span>
+          <input id="f" type="file" accept="image/png,image/jpeg,image/webp,application/pdf">
+        </label>
+        <img id="pv" class="preview" data-i18n-alt="r_alt" alt="" hidden>
+        <div class="row"><button class="btn" id="go" data-i18n="go"></button></div>
+        <p id="st" class="note" role="status"></p>
+      </section>
+      <section class="panel alt">
+        <h2 data-i18n="summary"></h2>
+        <div id="sum" class="out" aria-live="polite"></div>
+        <div class="row">
+          <button class="btn ghost" data-say="#sum" data-i18n="listen"></button>
+          <button class="btn ghost halt" data-i18n="stop"></button>
+          <button class="btn ghost" data-copy="#sum" data-i18n="copy"></button>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <title>Saarthi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,600&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="simplify">
+  <a class="skip" href="#main" data-i18n="skip"></a>
+  <header id="top"></header>
+  <section class="hero">
+    <div class="in"><div class="copy">
+      <h1 data-i18n="nav_simplify"></h1>
+      <p data-i18n="simp_p"></p>
+    </div></div>
+  </section>
+  <main id="main">
+    <div class="split">
+      <section class="panel">
+        <h2 data-i18n="pastetext"></h2>
+        <label for="src" data-i18n="reportrx"></label>
+        <textarea id="src" rows="10" maxlength="5000"></textarea>
+        <div class="row">
+          <button class="btn" id="simp" data-i18n="simplify"></button>
+          <button class="btn ghost" id="ex" data-i18n="example"></button>
+        </div>
+        <p class="note" data-i18n="simp_note"></p>
+      </section>
+      <section class="panel alt">
+        <h2 data-i18n="plain"></h2>
+        <p id="simp-status" class="note" role="status" hidden></p>
+        <div id="sum" class="out" aria-live="polite"></div>
+        <h2 id="dosehead" class="gap" data-i18n="doses" hidden></h2>
+        <ul id="doses" class="list"></ul>
+        <div class="row">
+          <button class="btn ghost" data-say="#sum" data-i18n="listen"></button>
+          <button class="btn ghost halt" data-i18n="stop"></button>
+          <button class="btn ghost" data-copy="#sum" data-i18n="copy"></button>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

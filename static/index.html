@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; img-src 'self' data: blob:; object-src 'none'; base-uri 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <title>Samajh</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Fraunces:opsz,wght@9..144,600&family=Noto+Sans+Devanagari:wght@400;700&family=Noto+Sans+Bengali:wght@400;700&family=Noto+Sans+Tamil:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-page="auth">
+  <a class="skip" href="#main" data-i18n="skip"></a>
+  <header id="top"></header>
+  <div class="auth" id="main">
+    <div class="side">
+      <div class="copy">
+        <h1 data-i18n="auth_h1"></h1>
+        <p data-i18n="auth_p"></p>
+      </div>
+    </div>
+    <form id="auth" novalidate>
+      <h2 data-i18n="welcome"></h2>
+      <label for="em" data-i18n="email"></label>
+      <input id="em" type="email" autocomplete="email" required maxlength="120">
+      <label for="pw" data-i18n="pass"></label>
+      <input id="pw" type="password" autocomplete="current-password" required minlength="8" maxlength="100">
+      <label class="check"><input id="show" type="checkbox"><span data-i18n="showpw"></span></label>
+      <p class="note" data-i18n="min8"></p>
+      <div class="row">
+        <button class="btn" value="login" data-i18n="login"></button>
+        <button class="btn ghost" value="signup" data-i18n="signup"></button>
+      </div>
+      <p id="msg" class="alert" role="alert"></p>
+    </form>
+  </div>
+  <script src="i18n.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
